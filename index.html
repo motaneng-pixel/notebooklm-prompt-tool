@@ -1,0 +1,844 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NotebookLM 提示詞產生器</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── Header ── */
+.header { flex-shrink: 0; padding: 11px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; gap: 16px; }
+.header h1 { font-size: 1.4rem; font-weight: 700; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; white-space: nowrap; }
+.header p { color: #475569; font-size: 0.78rem; margin-top: 2px; }
+.clear-btn { background: transparent; border: 1px solid #334155; color: #64748b; border-radius: 7px; padding: 6px 15px; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; }
+.clear-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+/* ── Tab bar ── */
+.page-tab-bar { flex-shrink: 0; display: flex; gap: 8px; padding: 7px 16px 0; border-bottom: 1px solid #1e293b; }
+.page-tab { padding: 7px 20px; border-radius: 8px 8px 0 0; border: 1px solid #334155; border-bottom: 3px solid transparent; background: #0f172a; color: #64748b; cursor: pointer; font-size: .85rem; font-weight: 600; transition: all .15s; }
+.page-tab:hover { color: #94a3b8; }
+.page-tab.active { background: #1e293b; color: #60a5fa; border-bottom-color: #3b82f6; }
+
+/* ── Main panels ── */
+.main-panels { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+
+/* ── Left panel ── */
+#left-panel { width: 52%; min-width: 280px; max-width: 82%; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px; flex-shrink: 0; }
+#panel-bg, #panel-info { display: flex; flex-direction: column; gap: 14px; }
+
+/* ── Resizer ── */
+#resizer { width: 4px; cursor: col-resize; background: #1e293b; transition: background 0.15s; flex-shrink: 0; }
+#resizer:hover, #resizer.dragging { background: #3b82f6; }
+
+/* ── Right panel ── */
+#right-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: #080f1d; }
+#rp-bg, #rp-info { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.rp-header { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; background: #0f1b2d; border-bottom: 1px solid #1e293b; flex-shrink: 0; gap: 10px; }
+.output-full { flex: 1; overflow-y: auto; padding: 18px 20px; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.83rem; line-height: 1.85; white-space: pre-wrap; color: #cbd5e1; min-height: 0; }
+.output-full.empty { display: flex; align-items: center; justify-content: center; color: #334155; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 0.85rem; text-align: center; }
+.rp-hint { font-size: 0.72rem; color: #1e293b; padding: 7px 16px; text-align: center; flex-shrink: 0; border-top: 1px solid #0f1b2d; }
+.rp-copy-btn { background: #2563eb; color: #fff; border: none; border-radius: 6px; padding: 5px 13px; font-size: 0.78rem; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+.rp-copy-btn:hover { background: #1d4ed8; }
+.rp-copy-btn.ok { background: #059669; }
+
+/* ── Cards ── */
+.card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 18px; }
+.card-title { font-size: 1.05rem; font-weight: 600; color: #60a5fa; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.badge { background: #2563eb; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; flex-shrink: 0; }
+.field { margin-bottom: 12px; }
+.field label { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #94a3b8; margin-bottom: 5px; font-weight: 500; }
+.tag { background: #1e3a5f; color: #60a5fa; font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; font-weight: 700; letter-spacing: 0.05em; }
+input[type=text], textarea { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; padding: 8px 11px; font-size: 0.88rem; font-family: inherit; transition: border-color 0.2s; resize: vertical; }
+input[type=text]:focus, textarea:focus { outline: none; border-color: #3b82f6; }
+input[type=text]::placeholder, textarea::placeholder { color: #334155; }
+
+/* ── Style picker ── */
+.cat-tabs { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+.cat-btn { background: #0f172a; border: 1px solid #334155; border-radius: 20px; padding: 5px 13px; font-size: 0.78rem; color: #64748b; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.cat-btn:hover { border-color: #60a5fa; color: #60a5fa; }
+.cat-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; font-weight: 600; }
+.style-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.style-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 0 0 10px 0; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden; }
+.style-card:hover { border-color: #6366f1; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(99,102,241,0.25); }
+.style-card.active { border-color: #6366f1; background: #16163a; }
+.style-card.active::after { content: '✓'; position: absolute; top: 8px; right: 8px; background: #6366f1; color: #fff; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.68rem; font-weight: 700; z-index: 2; }
+.color-bar { height: 56px; position: relative; overflow: hidden; }
+.color-bar::after { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(255,255,255,0.13) 0%, rgba(0,0,0,0.22) 100%); pointer-events: none; }
+.style-card-body { padding: 7px 8px 0 8px; }
+.style-name { font-size: 0.78rem; font-weight: 600; color: #e2e8f0; margin-bottom: 3px; line-height: 1.3; }
+.style-desc { font-size: 0.69rem; color: #64748b; line-height: 1.4; }
+#stylePreview { margin-top: 14px; padding-top: 14px; border-top: 1px solid #334155; }
+.preview-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; align-items: start; }
+.mock-slide { width: 100%; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; position: relative; border: 1px solid #475569; }
+.preview-section-label { font-size: 0.68rem; color: #475569; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+.preview-mood-tag { display: inline-block; background: #1e1b4b; color: #a78bfa; font-size: 0.73rem; padding: 3px 10px; border-radius: 20px; border: 1px solid #312e81; margin: 0 4px 5px 0; }
+.color-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #475569; }
+
+/* ── Mode tabs ── */
+.mode-tabs { display: flex; gap: 7px; }
+.mode-btn { padding: 5px 14px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; border: 1px solid #334155; background: transparent; color: #64748b; transition: all 0.15s; }
+.mode-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; font-weight: 600; }
+
+/* ── Info selectors ── */
+.info-sel { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
+.info-btn { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 5px 12px; font-size: .78rem; color: #64748b; cursor: pointer; transition: all .15s; }
+.info-btn:hover { border-color: #60a5fa; color: #60a5fa; }
+.info-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>📋 NotebookLM 提示詞產生器</h1>
+    <p>填入基礎架構 · 選擇視覺風格 · 即時生成提示詞</p>
+  </div>
+  <button class="clear-btn" onclick="clearAll()">↺ 全部清除</button>
+</div>
+
+<div class="page-tab-bar">
+  <button class="page-tab active" onclick="switchPage('bg',this)">📋 簡報背景提示詞</button>
+  <button class="page-tab" onclick="switchPage('info',this)">🏥 衛教圖表提示詞</button>
+</div>
+
+<div class="main-panels">
+
+  <!-- ── 左側輸入區 ── -->
+  <div id="left-panel">
+
+    <!-- 簡報背景輸入 -->
+    <div id="panel-bg">
+
+      <div class="card">
+        <div class="card-title"><span class="badge">1</span>填入基礎架構（PTCF）</div>
+        <div class="field">
+          <label>角色 <span class="tag">Persona</span></label>
+          <input type="text" id="f-persona" placeholder="例：我是一位講師，負責製作課程簡報" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>任務 <span class="tag">Task</span></label>
+          <input type="text" id="f-task" placeholder="例：將文件整理成適合聽眾閱讀的簡報大綱" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>內容背景 <span class="tag">Context</span></label>
+          <textarea id="f-context" rows="3" placeholder="例：對象是新進員工，需簡單易懂，著重實務操作說明" oninput="generate()"></textarea>
+        </div>
+        <div class="field">
+          <label>格式要求 <span class="tag">Format</span></label>
+          <textarea id="f-format" rows="3" placeholder="例：共 8 張投影片，每張包含標題、3 個重點條列、一句結論提醒" oninput="generate()"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="badge">2</span>語氣 &amp; 受眾（選填）</div>
+        <div class="field">
+          <label>溝通語氣</label>
+          <div class="info-sel" id="bg-tone">
+            <button class="info-btn" onclick="selBgOpt('bg-tone',this)" data-v="溝通語氣：文字應具備專業度，同時充滿啟發性，引發讀者思考。">專業啟發</button>
+            <button class="info-btn" onclick="selBgOpt('bg-tone',this)" data-v="溝通語氣：採用嚴謹、學術化的語法，確保論述具有高度可信度。">嚴謹學術</button>
+            <button class="info-btn" onclick="selBgOpt('bg-tone',this)" data-v="溝通語氣：活潑且充滿創意，打破常規，使用生動的表達方式。">活潑創意</button>
+            <button class="info-btn" onclick="selBgOpt('bg-tone',this)" data-v="溝通語氣：極致簡約，去除冗言贅字，僅保留核心精華資訊。">簡約精煉</button>
+            <button class="info-btn" onclick="selBgOpt('bg-tone',this)" data-v="溝通語氣：強調說服力，邏輯層層遞進，旨在轉化或打動受眾。">說服力強</button>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>目標受眾</label>
+          <div class="info-sel" id="bg-audience">
+            <button class="info-btn" onclick="selBgOpt('bg-audience',this)" data-v="目標受眾：一般大眾。不預設專業背景，使用通用語境。">一般大眾</button>
+            <button class="info-btn" onclick="selBgOpt('bg-audience',this)" data-v="目標受眾：公司高層。僅呈現核心決策價值與結論。">公司高層</button>
+            <button class="info-btn" onclick="selBgOpt('bg-audience',this)" data-v="目標受眾：學生。使用淺顯易懂的邏輯與教育引導。">學生</button>
+            <button class="info-btn" onclick="selBgOpt('bg-audience',this)" data-v="目標受眾：社群媒體讀者。強調視覺衝擊與短平快的資訊點。">社群媒體</button>
+            <button class="info-btn" onclick="selBgOpt('bg-audience',this)" data-v="目標受眾：投資人。側重市場潛力、商業模式與風險分析。">投資人</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="badge">3</span>選擇視覺風格（45 種）</div>
+        <div class="cat-tabs" id="catTabs"></div>
+        <div class="style-grid" id="styleGrid"></div>
+        <div id="stylePreview" style="display:none"></div>
+      </div>
+
+    </div><!-- #panel-bg -->
+
+    <!-- 衛教圖表輸入 -->
+    <div id="panel-info" style="display:none">
+
+      <div class="card">
+        <div class="card-title"><span class="badge">1</span>填入衛教內容</div>
+        <div class="field"><label>角色 <span class="tag">Persona</span></label><input type="text" id="i-persona" placeholder="例：我是門診護理師，負責第二型糖尿病患者衛教" oninput="generateInfo()"></div>
+        <div class="field"><label>任務 <span class="tag">Task</span></label><input type="text" id="i-task" placeholder="例：設計一張患者帶回家的飲食控糖衛教圖卡" oninput="generateInfo()"></div>
+        <div class="field"><label>主題內容 <span class="tag">Context</span></label><textarea id="i-context" rows="5" placeholder="可直接貼入原始衛教文件全文（含標題、醫院名稱、文獻出處皆可），AI 會自動略過非內文部分，只萃取衛教說明內容；或直接描述主題與重點方向亦可" oninput="generateInfo()"></textarea></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="badge">2</span>設定圖表規格</div>
+        <div class="field">
+          <label>版面比例</label>
+          <div class="info-sel" id="i-layout">
+            <button class="info-btn active" onclick="selInfo('i-layout',this)" data-v="直式9:16">直式 9:16（衛教單張）</button>
+            <button class="info-btn" onclick="selInfo('i-layout',this)" data-v="方形1:1">方形 1:1（社群）</button>
+            <button class="info-btn" onclick="selInfo('i-layout',this)" data-v="橫式16:9">橫式 16:9（簡報用）</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>視覺主色</label>
+          <div class="info-sel" id="i-color">
+            <button class="info-btn active" onclick="selInfo('i-color',this)" data-v="醫療藍白">🔵 醫療藍白</button>
+            <button class="info-btn" onclick="selInfo('i-color',this)" data-v="溫暖橘白">🟠 溫暖橘白</button>
+            <button class="info-btn" onclick="selInfo('i-color',this)" data-v="自然綠白">🟢 自然綠白</button>
+            <button class="info-btn" onclick="selInfo('i-color',this)" data-v="柔和粉白">🩷 柔和粉白</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>插圖風格</label>
+          <div class="info-sel" id="i-style">
+            <button class="info-btn active" onclick="selInfo('i-style',this)" data-v="flat">扁平設計（預設）</button>
+            <button class="info-btn" onclick="selInfo('i-style',this)" data-v="clay">柔和 3D 黏土</button>
+            <button class="info-btn" onclick="selInfo('i-style',this)" data-v="semi">半寫實插畫</button>
+            <button class="info-btn" onclick="selInfo('i-style',this)" data-v="watercolor">溫暖水彩</button>
+            <button class="info-btn" onclick="selInfo('i-style',this)" data-v="iso">等角立體</button>
+            <button class="info-btn" onclick="selInfo('i-style',this)" data-v="2.5d">日式 2.5D</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>目標受眾</label>
+          <div class="info-sel" id="i-audience">
+            <button class="info-btn active" onclick="selInfo('i-audience',this)" data-v="患者本人">患者本人</button>
+            <button class="info-btn" onclick="selInfo('i-audience',this)" data-v="患者家屬">患者家屬</button>
+            <button class="info-btn" onclick="selInfo('i-audience',this)" data-v="醫護人員">醫護人員</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>分段生成 <span class="tag">長文件拆成多張圖</span></label>
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:.82rem;color:#94a3b8;margin-top:4px">
+            <input type="checkbox" id="i-batch" onchange="toggleBatch()" style="accent-color:#3b82f6;width:14px;height:14px">
+            啟用分段生成（每次只取文件中的一段範圍）
+          </label>
+          <div id="batch-panel" style="display:none;margin-top:10px">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+              <div>
+                <div style="font-size:.72rem;color:#64748b;margin-bottom:4px">第幾頁</div>
+                <input type="number" id="i-page" min="1" value="1" oninput="updateBatchCalc()" style="width:56px;padding:5px 8px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:.85rem">
+              </div>
+              <div style="display:flex;align-items:flex-end;gap:6px">
+                <div>
+                  <div style="font-size:.72rem;color:#64748b;margin-bottom:4px">主題項目第</div>
+                  <input type="number" id="i-from" min="1" value="1" oninput="updateBatchCalc()" style="width:56px;padding:5px 8px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:.85rem">
+                </div>
+                <span style="font-size:.82rem;color:#64748b;padding-bottom:7px">至</span>
+                <div>
+                  <div style="font-size:.72rem;color:#64748b;margin-bottom:4px">第</div>
+                  <input type="number" id="i-to" min="1" value="4" oninput="updateBatchCalc()" style="width:56px;padding:5px 8px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:.85rem">
+                </div>
+                <span style="font-size:.82rem;color:#64748b;padding-bottom:7px">項</span>
+              </div>
+            </div>
+            <div id="batch-calc" style="margin-top:9px;font-size:.79rem;color:#93c5fd;background:#1e3a5f;padding:7px 11px;border-radius:6px;border:1px solid #2563eb">
+              第 1 頁・主題項目第 1 至第 4 項
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- #panel-info -->
+
+  </div><!-- #left-panel -->
+
+  <!-- ── 拖曳分隔線 ── -->
+  <div id="resizer"></div>
+
+  <!-- ── 右側輸出區 ── -->
+  <div id="right-panel">
+
+    <!-- 簡報背景輸出 -->
+    <div id="rp-bg">
+      <div class="rp-header">
+        <div class="mode-tabs">
+          <button class="mode-btn active" onclick="setMode('nat',this)">自然語言</button>
+          <button class="mode-btn" onclick="setMode('yaml',this)">YAML 格式</button>
+        </div>
+        <button class="rp-copy-btn" id="copyBtn" onclick="doCopy()">複製</button>
+      </div>
+      <div class="output-full empty" id="output">填入欄位或選擇風格，即時生成提示詞</div>
+      <p class="rp-hint">提示詞可直接貼入 NotebookLM 對話框；視覺風格指令可另外貼入 Midjourney / DALL-E 生成背景圖</p>
+    </div>
+
+    <!-- 衛教圖表輸出 -->
+    <div id="rp-info" style="display:none">
+      <div class="rp-header">
+        <span style="font-size:0.83rem;color:#60a5fa;font-weight:600;letter-spacing:0.02em">資訊圖表提示詞輸出</span>
+        <button class="rp-copy-btn" id="infoCopyBtn" onclick="doInfoCopy()">複製</button>
+      </div>
+      <div class="output-full empty" id="info-output">設定規格後即時生成提示詞</div>
+      <p class="rp-hint">提示詞可貼入 ChatGPT / DALL-E / Midjourney 生成衛教資訊圖表；或貼入 Canva AI 圖像生成功能</p>
+    </div>
+
+  </div><!-- #right-panel -->
+
+</div><!-- .main-panels -->
+
+<script>
+const DATA = [
+  { cat:"清新明亮系", icon:"☁️", styles:[
+    { name:"清晰有序極簡辦公風", colors:["#F8FAFC","#64748B","#CBD5E1"], desc:"冷白＋石板藍，方格紋理，整潔有序",
+      nat:"生成高品質抽象背景海報，使用冷白與淺石板藍漸層，融入方格座標紙紋理與等距幾何線段，添加輕柔白色光暈從上方均勻散落，讓整體呈現高效有序的行政極簡美學，支持 8K 解析度，比例 16:9，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 清晰有序極簡辦公風\ncolors:\n  primary: \"冷白 #F8FAFC\"\n  secondary: \"淺石板藍 #64748B\"\ntexture:\n  - 方格座標紙紋理 (opacity: 0.10)\n  - 等距幾何線段 (opacity: 0.12)\nlighting: 頂部均勻漫射\nmood: 整潔、有條理、專注\nratio: 16:9\nresolution: 8K" },
+    { name:"玻璃擬態辦公風", colors:["#E8F4F8","#FFFFFF","#A8D8EA"], desc:"冰藍玻璃質感，磨砂透明層疊，現代設計",
+      nat:"生成高品質抽象背景海報，使用冰藍與霧白漸層，融入玻璃擬態磨砂透明卡片層疊效果、柔和模糊背景光暈與細緻玻璃邊框高光，添加頂部冷白漫射光，整體透明通透無陰影，呈現現代 Glassmorphism 辦公美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 玻璃擬態辦公風\ncolors:\n  primary: \"冰藍 #E8F4F8\"\n  secondary: \"霧白 #FFFFFF\"\n  accent: \"玻璃藍 #A8D8EA\"\ntexture:\n  - 玻璃擬態磨砂卡片 (opacity: 0.25)\n  - 模糊背景光暈 (opacity: 0.30)\n  - 玻璃邊框高光 (opacity: 0.40)\nlighting: 頂部冷白均勻漫射\nmood: 現代、通透、設計感\nratio: 16:9\nresolution: 8K" },
+    { name:"玻璃擬態療癒風", colors:["#E0F2FE","#FFFFFF","#BAE6FD"], desc:"冰晶藍白＋玻璃透明，清透現代感",
+      nat:"生成高品質抽象背景海報，使用冰晶藍白漸層，融入玻璃擬態半透明面板層疊效果、磨砂玻璃模糊背景光暈與細緻玻璃邊框反光高光，添加頂部藍白冷光均勻散落，整體清透通透，呈現現代玻璃感客服介面美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 玻璃擬態療癒風\ncolors:\n  primary: \"冰晶藍 #E0F2FE\"\n  secondary: \"霧白 #FFFFFF\"\n  accent: \"玻璃藍 #BAE6FD\"\ntexture:\n  - 玻璃擬態半透明面板 (opacity: 0.30)\n  - 磨砂模糊背景光暈 (opacity: 0.25)\n  - 玻璃邊框反光 (opacity: 0.40)\nlighting: 頂部藍白冷光均勻散落\nmood: 清透、現代、通透感\nratio: 16:9\nresolution: 8K" },
+    { name:"奢華極簡商務風", colors:["#0A1628","#C9A84C","#F5F0E8"], desc:"海軍藍＋香檳金，大理石紋，頂級商務",
+      nat:"生成高品質抽象背景海報，使用深海軍藍與香檳金漸層，融入隱約大理石紋理與細緻黃金線條網格，添加右上角柔和金色光暈散射，呈現頂級企業的沉穩奢華美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 奢華極簡商務風\ncolors:\n  primary: \"深海軍藍 #0A1628\"\n  secondary: \"香檳金 #C9A84C\"\n  accent: \"象牙白 #F5F0E8\"\ntexture:\n  - 大理石紋理 (opacity: 0.12)\n  - 黃金線條網格 (opacity: 0.16)\nlighting: 右上角柔和金色光暈\nmood: 權威、精緻、可信賴\nratio: 16:9\nresolution: 8K" },
+    { name:"工程藍圖設計風", colors:["#003153","#FFFFFF","#4A9EE0"], desc:"工程藍＋白線稿，藍圖網格，精密嚴謹",
+      nat:"生成高品質抽象背景海報，使用工程藍與白色線稿漸層，融入精密工程藍圖網格、技術標注符號與尺寸測量線條，添加頂部均勻工程燈箱漫射光，呈現精密嚴謹工程專案設計美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 工程藍圖設計風\ncolors:\n  primary: \"工程藍 #003153\"\n  secondary: \"白色線稿 #FFFFFF\"\n  accent: \"淡藍網格 #4A9EE0\"\ntexture:\n  - 精密藍圖網格 (opacity: 0.20)\n  - 技術標注符號 (opacity: 0.14)\n  - 尺寸測量線條 (opacity: 0.12)\nlighting: 頂部均勻工程燈箱光\nmood: 精密、嚴謹、專業規劃\nratio: 16:9\nresolution: 8K" },
+    { name:"新聞排版印刷風", colors:["#F5F0DC","#1A1A1A","#8B8B8B"], desc:"舊報紙米黃＋墨黑，印刷質感，厚重",
+      nat:"生成高品質抽象背景海報，使用舊報紙米黃與深墨黑漸層，融入報紙欄位排版格線、印刷網點半調紋理與活字字體浮水印，添加柔和頂部自然光，呈現傳媒公關新聞印刷歷史美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 新聞排版印刷風\ncolors:\n  primary: \"舊報紙米黃 #F5F0DC\"\n  secondary: \"深墨黑 #1A1A1A\"\n  accent: \"油墨棕 #3D2B1F\"\ntexture:\n  - 報紙欄位格線 (opacity: 0.15)\n  - 印刷網點半調 (opacity: 0.12)\n  - 活字浮水印 (opacity: 0.06)\nlighting: 頂部均勻自然漫射\nmood: 歷史感、可信度、傳媒專業\nratio: 16:9\nresolution: 8K" }
+  ]},
+  { cat:"自然有機系", icon:"🌿", styles:[
+    { name:"日式和風整理術風", colors:["#F7F3EE","#8B7355","#C5B99A"], desc:"溫白＋和紙棕，竹節枯山水，禪意秩序",
+      nat:"生成高品質抽象背景海報，使用溫白與和紙棕漸層，融入日式和紙細膩纖維紋路、竹節直線圖案與枯山水砂紋抽象痕跡，添加側邊柔和自然光，留有大量留白，呈現禪意整理術的日式侘寂美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 日式和風整理術風\ncolors:\n  primary: \"溫白 #F7F3EE\"\n  secondary: \"和紙棕 #8B7355\"\n  accent: \"竹色 #C5B99A\"\ntexture:\n  - 日式和紙纖維紋路 (opacity: 0.18)\n  - 竹節直線圖案 (opacity: 0.12)\n  - 枯山水砂紋 (opacity: 0.10)\nlighting: 側邊柔和自然光\nmood: 禪意、秩序、侘寂\nratio: 16:9\nresolution: 8K" },
+    { name:"森林自然療癒風", colors:["#1A3A2A","#52B788","#95D5B2"], desc:"深森綠＋薄荷翠，光影穿透，自然療癒",
+      nat:"生成高品質抽象背景海報，使用深森林綠與薄荷翠漸層，融入抽象樹冠光影斑駁、森林空氣感光線斜射穿透與葉片半透明輪廓，添加從上方灑入的自然陽光散射光束，呈現寧靜自然療癒美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 森林自然療癒風\ncolors:\n  primary: \"深森林綠 #1A3A2A\"\n  secondary: \"薄荷翠 #52B788\"\n  accent: \"嫩葉綠 #95D5B2\"\ntexture:\n  - 樹冠光影斑駁 (opacity: 0.22)\n  - 光線斜射穿透 (opacity: 0.18)\n  - 葉片透明輪廓 (opacity: 0.12)\nlighting: 頂部自然陽光散射光束\nmood: 寧靜、自然、療癒\nratio: 16:9\nresolution: 8K" },
+    { name:"峰頂視角山岳雲霧風", colors:["#1C1C1C","#F0F0F0","#F4D03F"], desc:"深炭灰＋霧白，山岳稜線，願景格局",
+      nat:"生成高品質抽象背景海報，使用深炭灰與霧白漸層，融入抽象山岳稜線剪影、層疊雲霧飄帶與晨曦金邊光暈，添加山頂透出的金白色晨光逆光散射，呈現登峰造極高管願景美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 峰頂視角山岳雲霧風\ncolors:\n  primary: \"深炭灰 #1C1C1C\"\n  secondary: \"霧白 #F0F0F0\"\n  accent: \"晨曦金 #F4D03F\"\ntexture:\n  - 山岳稜線剪影 (opacity: 0.22)\n  - 層疊雲霧飄帶 (opacity: 0.18)\n  - 晨曦金邊光暈 (opacity: 0.15)\nlighting: 山頂後方晨曦逆光散射\nmood: 願景、突破、格局高遠\nratio: 16:9\nresolution: 8K" },
+    { name:"日式禪意決策風", colors:["#2D2016","#C9A96E","#F4ECD6"], desc:"深焦茶＋金沙米，枯山水墨跡，沉著智慧",
+      nat:"生成高品質抽象背景海報，使用深焦茶與金沙米漸層，融入枯山水砂紋抽象圖案、毛筆墨跡留白意境與竹節直線元素，添加側邊柔和暖光，大量留白，呈現沉著智慧的日式禪意決策美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 日式禪意決策風\ncolors:\n  primary: \"深焦茶 #2D2016\"\n  secondary: \"金沙米 #C9A96E\"\n  accent: \"和紙白 #F4ECD6\"\ntexture:\n  - 枯山水砂紋圖案 (opacity: 0.18)\n  - 毛筆墨跡留白 (opacity: 0.20)\n  - 竹節直線元素 (opacity: 0.12)\nlighting: 側邊柔和暖光\nmood: 沉著、智慧、禪意\nratio: 16:9\nresolution: 8K" },
+    { name:"自然山野戶外風", colors:["#1C3A2A","#4A7C59","#A8C5A0"], desc:"深山野綠＋橄欖，等高線地形，戶外感",
+      nat:"生成高品質抽象背景海報，使用深山野綠與橄欖綠漸層，融入等高線地形圖輪廓、自然岩石紋理與晨霧飄散效果，添加從山頂透入的自然晨光斜射，呈現戶外現場管理自然地形美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 自然山野戶外風\ncolors:\n  primary: \"深山野綠 #1C3A2A\"\n  secondary: \"橄欖綠 #4A7C59\"\n  accent: \"霧氣綠白 #A8C5A0\"\ntexture:\n  - 等高線地形圖輪廓 (opacity: 0.20)\n  - 自然岩石紋理 (opacity: 0.15)\n  - 晨霧飄散效果 (opacity: 0.18)\nlighting: 山頂自然晨光斜射\nmood: 戶外、自然、地形感\nratio: 16:9\nresolution: 8K" },
+    { name:"人才生長花園風", colors:["#064E3B","#34D399","#A7F3D0"], desc:"深翠綠＋嫩芽綠，植物線條，培育成長",
+      nat:"生成高品質抽象背景海報，使用深翠綠與嫩芽綠漸層，融入抽象植物生長線條、萌芽種子圖示輪廓與有機葉脈網路，添加從底部向上生長蔓延的嫩綠光能，呈現人才培育有機生長美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 人才生長花園風\ncolors:\n  primary: \"深翠綠 #064E3B\"\n  secondary: \"嫩芽綠 #34D399\"\n  accent: \"葉脈淺綠 #A7F3D0\"\ntexture:\n  - 植物生長線條 (opacity: 0.18)\n  - 萌芽種子圖示 (opacity: 0.12)\n  - 葉脈網路 (opacity: 0.10)\nlighting: 底部向上生長嫩綠光能\nmood: 成長、培育、生命力\nratio: 16:9\nresolution: 8K" },
+    { name:"熱帶叢林探索風", colors:["#0D3B2E","#F7B731","#27AE60"], desc:"深叢林綠＋熱帶黃，葉片光斑，探索活力",
+      nat:"生成高品質抽象背景海報，使用深叢林綠與熱帶黃漸層，融入熱帶植物寬葉片剪影、陽光穿透葉隙的光斑效果與叢林光束穿葉照射，添加自然頂光透入叢林的溫暖光感，呈現充滿探索活力的熱帶叢林行銷美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 熱帶叢林探索風\ncolors:\n  primary: \"深叢林綠 #0D3B2E\"\n  secondary: \"熱帶黃 #F7B731\"\n  accent: \"翠葉綠 #27AE60\"\ntexture:\n  - 熱帶寬葉片剪影 (opacity: 0.25)\n  - 葉隙光斑效果 (opacity: 0.20)\n  - 叢林光束穿葉 (opacity: 0.18)\nlighting: 頂部自然溫暖光束穿透\nmood: 探索、活力、熱帶生機\nratio: 16:9\nresolution: 8K" },
+    { name:"團隊協作蜂群風", colors:["#78350F","#F59E0B","#FBBF24"], desc:"深琥珀橙＋蜂蜜黃，蜂巢網格，集體能量",
+      nat:"生成高品質抽象背景海報，使用深琥珀橙與蜂蜜黃漸層，融入六角蜂巢細密網格、工蜂飛行軌跡弧線與蜂蠟質感紋理，添加蜂巢核心橘黃光芒向外放射，呈現高效團隊協作有機組織美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 團隊協作蜂群風\ncolors:\n  primary: \"深琥珀橙 #78350F\"\n  secondary: \"蜂蜜黃 #F59E0B\"\n  accent: \"亮橘金 #FBBF24\"\ntexture:\n  - 六角蜂巢網格 (opacity: 0.22)\n  - 飛行軌跡弧線 (opacity: 0.12)\n  - 蜂蠟質感紋理 (opacity: 0.10)\nlighting: 中央蜂巢核心橘黃放射\nmood: 協作、有機、集體能量\nratio: 16:9\nresolution: 8K" }
+  ]},
+  { cat:"溫暖手感系", icon:"🎨", styles:[
+    { name:"暖色紙質文具手感風", colors:["#FDF6E3","#C4956A","#FFF3B0"], desc:"米白＋赭石棕，手工紙紋，溫暖親切",
+      nat:"生成高品質抽象背景海報，使用溫暖米白與淡赭石棕漸層，融入手工紙張纖維紋理、鉛筆線條與便利貼色塊點綴，添加左側柔和自然側光，呈現親切有溫度的文書美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 暖色紙質文具手感風\ncolors:\n  primary: \"溫暖米白 #FDF6E3\"\n  secondary: \"淡赭石棕 #C4956A\"\n  accent: \"便利貼黃 #FFF3B0\"\ntexture:\n  - 手工紙張纖維紋理 (opacity: 0.20)\n  - 鉛筆線條 (opacity: 0.12)\n  - 便利貼色塊 (opacity: 0.15)\nlighting: 左側自然柔和側光\nmood: 親切、溫暖、人性化\nratio: 16:9\nresolution: 8K" },
+    { name:"溫暖人性化關懷風", colors:["#FF8C69","#FFFDF7","#FFB347"], desc:"珊瑚橘＋奶油白，對話泡泡，親切",
+      nat:"生成高品質抽象背景海報，使用溫暖珊瑚橘與奶油白漸層，融入柔和圓弧對話泡泡輪廓、微型笑臉圖示與流動曲線紋理，添加中央橘白柔和光暈向外暈散，呈現以人為本客服溫暖美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 溫暖人性化關懷風\ncolors:\n  primary: \"溫暖珊瑚橘 #FF8C69\"\n  secondary: \"奶油白 #FFFDF7\"\n  accent: \"蜜桃粉 #FFB347\"\ntexture:\n  - 圓弧對話泡泡輪廓 (opacity: 0.18)\n  - 流動柔和曲線 (opacity: 0.12)\nlighting: 中央橘白柔和光暈\nmood: 溫暖、親切、被照顧感\nratio: 16:9\nresolution: 8K" },
+    { name:"溫暖包容多元風", colors:["#FEFCE8","#FCA5A5","#93C5FD"], desc:"米白＋多彩漸層，交疊圓圈，多元共融",
+      nat:"生成高品質抽象背景海報，使用溫暖米白與多色彩虹漸層柔和疊加，融入柔和圓形多元色塊、交疊圓圈包容圖形與溫暖光點散落，添加中央彩虹柔光向外擴散，整體柔和無強烈陰影，呈現多元共融友善職場美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 溫暖包容多元風\ncolors:\n  primary: \"溫暖米白 #FEFCE8\"\n  secondary: \"珊瑚紅 #FCA5A5\"\n  accent: \"天空藍 #93C5FD\"\n  accent_colors:\n    - \"薄荷綠 #6EE7B7\"\n    - \"薰衣草 #C4B5FD\"\ntexture:\n  - 圓形多元色塊 (opacity: 0.20)\n  - 交疊包容圓圈 (opacity: 0.15)\n  - 溫暖光點散落 (opacity: 0.12)\nlighting: 中央彩虹柔光擴散\nmood: 包容、開放、溫暖歡迎\nratio: 16:9\nresolution: 8K" },
+    { name:"水彩藝術傳播風", colors:["#FFF8F0","#FF9AA2","#C7E9F1"], desc:"奶白＋水彩粉，暈染流動，藝術媒體感",
+      nat:"生成高品質抽象背景海報，使用奶白底色與水彩粉藍漸層暈染，融入水彩在濕紙上暈開的柔軟紋理、顏料流動色塊與透明水彩疊加層次，添加柔和自然頂光，整體輕盈透明，呈現藝術創意媒體傳播美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 水彩藝術傳播風\ncolors:\n  primary: \"奶白 #FFF8F0\"\n  secondary: \"水彩粉 #FF9AA2\"\n  accent: \"透明藍 #C7E9F1\"\ntexture:\n  - 水彩暈染紋理 (opacity: 0.35)\n  - 顏料流動色塊 (opacity: 0.25)\n  - 水彩疊加層次 (opacity: 0.20)\nlighting: 柔和自然頂光漫射\nmood: 藝術、輕盈、創意流動\nratio: 16:9\nresolution: 8K" },
+    { name:"水彩人文藝術風", colors:["#FFF5EE","#FFB7C5","#B7E0FF"], desc:"溫白＋粉藍水彩，暈染層疊，溫暖藝術感",
+      nat:"生成高品質抽象背景海報，使用溫白與水彩粉藍漸層暈染，融入水彩洗染柔軟紋理、柔和色塊疊加層次與流動顏料邊緣痕跡，整體柔和無銳角，添加頂部自然散光，呈現人文溫暖的水彩藝術 HR 美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 水彩人文藝術風\ncolors:\n  primary: \"溫白 #FFF5EE\"\n  secondary: \"粉紅水彩 #FFB7C5\"\n  accent: \"天藍水彩 #B7E0FF\"\ntexture:\n  - 水彩洗染紋理 (opacity: 0.30)\n  - 色塊疊加層次 (opacity: 0.22)\n  - 顏料流動邊緣 (opacity: 0.18)\nlighting: 頂部自然柔和散光\nmood: 人文、溫暖、藝術\nratio: 16:9\nresolution: 8K" },
+    { name:"Lo-fi 復古計畫風", colors:["#2C1810","#D4956A","#F0C89E"], desc:"深棕＋復古橘米，底紋顆粒，Lo-fi手感",
+      nat:"生成高品質抽象背景海報，使用深棕與復古橘米漸層，融入仿舊膠卷顆粒噪點紋理、復古方格筆記本底紋與磁帶錄音波形圖案，添加暖黃舊燈泡側光，整體帶有歲月溫度，呈現 Lo-fi 復古氣息的手感計畫美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: Lo-fi 復古計畫風\ncolors:\n  primary: \"深棕 #2C1810\"\n  secondary: \"復古橘米 #D4956A\"\n  accent: \"奶油米白 #F0C89E\"\ntexture:\n  - 仿舊膠卷顆粒噪點 (opacity: 0.25)\n  - 方格筆記本底紋 (opacity: 0.15)\n  - 磁帶波形圖案 (opacity: 0.12)\nlighting: 暖黃舊燈泡柔和側光\nmood: 復古、手感、Lo-fi溫度\nratio: 16:9\nresolution: 8K" },
+    { name:"Mesh 漸層行銷風", colors:["#FF6B6B","#4ECDC4","#45B7D1"], desc:"多彩Mesh漸層，流體色塊融合，現代品牌",
+      nat:"生成高品質抽象背景海報，使用多彩 Mesh 網格漸層（珊瑚紅、青綠、天藍）流暢融合，融入有機流體色塊自然過渡、Mesh 光影柔焦疊加與漸層邊緣自然暈散，整體色彩豐富流動，添加中央漸層高光，呈現現代品牌行銷 Mesh 視覺美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: Mesh 漸層行銷風\ncolors:\n  primary: \"珊瑚紅 #FF6B6B\"\n  secondary: \"青綠 #4ECDC4\"\n  accent: \"天藍 #45B7D1\"\n  accent_colors:\n    - \"薰衣草 #A29BFE\"\ntexture:\n  - 有機流體色塊過渡 (opacity: 0.40)\n  - Mesh光影柔焦疊加 (opacity: 0.30)\n  - 漸層邊緣暈散 (opacity: 0.20)\nlighting: 中央漸層核心高光\nmood: 現代、流動、品牌感\nratio: 16:9\nresolution: 8K" }
+  ]},
+  { cat:"科技資訊系", icon:"🔵", styles:[
+    { name:"數位行事曆科技風", colors:["#1E1B4B","#3B82F6","#BFDBFE"], desc:"深靛藍＋電子藍，行事曆格線，數位感",
+      nat:"生成高品質抽象背景海報，使用深靛藍與電子藍漸層，融入半透明行事曆格線、時鐘刻度弧線與日期數字浮水印，添加水平時間軸光帶向右延伸，呈現數位行程管理科技感美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 數位行事曆科技風\ncolors:\n  primary: \"深靛藍 #1E1B4B\"\n  secondary: \"電子藍 #3B82F6\"\n  accent: \"冰藍白 #BFDBFE\"\ntexture:\n  - 半透明行事曆格線 (opacity: 0.18)\n  - 時鐘刻度弧線 (opacity: 0.12)\n  - 日期數字浮水印 (opacity: 0.07)\nlighting: 中央水平時間軸光帶\nmood: 效率、精準、數位化\nratio: 16:9\nresolution: 8K" },
+    { name:"即時通訊數位介面風", colors:["#0A1F1F","#0D9488","#22D3EE"], desc:"深青黑＋青綠，聊天介面線框，即時高效",
+      nat:"生成高品質抽象背景海報，使用深青黑與青綠漸層，融入即時聊天訊息串列介面線框、打字光標與已讀回條圖示，添加左側青綠訊息光流向右延伸，呈現高效數位客服即時通訊美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 即時通訊數位介面風\ncolors:\n  primary: \"深青黑 #0A1F1F\"\n  secondary: \"青綠 #0D9488\"\n  accent: \"亮青 #22D3EE\"\ntexture:\n  - 聊天介面線框 (opacity: 0.16)\n  - 打字光標 (opacity: 0.12)\n  - 已讀回條圖示 (opacity: 0.08)\nlighting: 左側青綠訊息光流\nmood: 即時、高效、數位化服務\nratio: 16:9\nresolution: 8K" },
+    { name:"客戶滿意度儀表板風", colors:["#1E293B","#10B981","#F59E0B"], desc:"深藍灰＋翠綠，儀表板指針，績效成就",
+      nat:"生成高品質抽象背景海報，使用深藍灰與翠綠漸層，融入弧形儀表板指針圖示、圓形評分圖示與數據條狀圖紋理，添加中央柔綠光環向外擴散，呈現數據驅動客服績效儀表板美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 客戶滿意度儀表板風\ncolors:\n  primary: \"深藍灰 #1E293B\"\n  secondary: \"翠綠 #10B981\"\n  accent: \"警示琥珀 #F59E0B\"\ntexture:\n  - 弧形儀表板指針 (opacity: 0.18)\n  - 圓形評分圖示 (opacity: 0.14)\n  - 橫向數據條狀圖 (opacity: 0.12)\nlighting: 中央柔綠光環擴散\nmood: 成就感、績效、數據導向\nratio: 16:9\nresolution: 8K" },
+    { name:"即時監控調度風", colors:["#052E16","#22C55E","#BBF7D0"], desc:"深墨綠＋螢光綠，雷達掃描，指揮調度",
+      nat:"生成高品質抽象背景海報，使用深墨綠與螢光綠漸層，融入矩陣式監控螢幕格線、脈衝掃描弧形與即時數據流文字，添加水平掃描光束從左向右週期掃過，呈現雷達調度指揮中心監控美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 即時監控調度風\ncolors:\n  primary: \"深墨綠 #052E16\"\n  secondary: \"螢光綠 #22C55E\"\n  accent: \"亮綠白 #BBF7D0\"\ntexture:\n  - 矩陣監控螢幕格線 (opacity: 0.16)\n  - 脈衝掃描弧形 (opacity: 0.20)\n  - 數據流文字 (opacity: 0.08)\nlighting: 左側掃描起始點水平光束\nmood: 監控、即時、指揮調度\nratio: 16:9\nresolution: 8K" },
+    { name:"組織連結網絡風", colors:["#1E1B4B","#818CF8","#C7D2FE"], desc:"深靛藍＋薰衣草紫，人型節點，組織凝聚",
+      nat:"生成高品質抽象背景海報，使用深靛藍與薰衣草紫漸層，融入人型圖示節點網絡、組織架構樹狀連線與脈動連結光點，添加中央主節點紫藍色連結光束向四方延伸，呈現人才組織關係網絡美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 組織連結網絡風\ncolors:\n  primary: \"深靛藍 #1E1B4B\"\n  secondary: \"薰衣草紫 #818CF8\"\n  accent: \"淡紫白 #C7D2FE\"\ntexture:\n  - 人型節點網絡 (opacity: 0.16)\n  - 組織樹狀連線 (opacity: 0.18)\n  - 脈動連結光點 (opacity: 0.14)\nlighting: 中央節點紫藍光束放射\nmood: 連結、歸屬感、組織凝聚\nratio: 16:9\nresolution: 8K" },
+    { name:"數據漏斗洞察風", colors:["#1E1035","#E8A598","#FED7D7"], desc:"深藍紫＋玫瑰金，漏斗粒子，精準轉化",
+      nat:"生成高品質抽象背景海報，使用深藍紫與玫瑰金漸層，融入倒三角漏斗流程線框、數據粒子由寬到窄聚集流動與轉化率箭頭紋理，添加底部轉化焦點玫瑰金聚焦強光，呈現精準行銷漏斗轉化美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 數據漏斗洞察風\ncolors:\n  primary: \"深藍紫 #1E1035\"\n  secondary: \"玫瑰金 #E8A598\"\n  accent: \"亮粉白 #FED7D7\"\ntexture:\n  - 倒三角漏斗線框 (opacity: 0.20)\n  - 數據粒子聚集流動 (opacity: 0.25)\n  - 轉化率箭頭 (opacity: 0.12)\nlighting: 底部轉化焦點玫瑰金強光\nmood: 精準、轉化、數據洞察\nratio: 16:9\nresolution: 8K" },
+    { name:"甘特圖時間軸風", colors:["#1E3A5F","#38BDF8","#4ADE80"], desc:"深藍石板＋天際藍，進度條，有序掌控",
+      nat:"生成高品質抽象背景海報，使用深藍石板與天際藍漸層，融入水平甘特圖進度條線框、里程碑菱形標記與進度百分比弧形，添加由左向右延伸的進度光流，呈現有條不紊專案管理時間軸美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 甘特圖時間軸風\ncolors:\n  primary: \"深藍石板 #1E3A5F\"\n  secondary: \"天際藍 #38BDF8\"\n  accent: \"完成綠 #4ADE80\"\ntexture:\n  - 水平甘特圖進度條 (opacity: 0.18)\n  - 里程碑菱形標記 (opacity: 0.15)\n  - 進度百分比弧形 (opacity: 0.10)\nlighting: 左側由左向右進度光流\nmood: 掌控、條理、穩步推進\nratio: 16:9\nresolution: 8K" },
+    { name:"敏捷看板任務風", colors:["#1A1A2E","#7C3AED","#10B981"], desc:"深炭色＋活力紫，看板欄位，迭代動能",
+      nat:"生成高品質抽象背景海報，使用深炭色與活力紫漸層，融入三欄式看板列框線稿（待辦、進行中、完成）、便利貼卡片輪廓與任務標籤圓角矩形，添加中央進行中欄位活力紫光芒散射，呈現敏捷開發看板美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 敏捷看板任務風\ncolors:\n  primary: \"深炭色 #1A1A2E\"\n  secondary: \"活力紫 #7C3AED\"\n  accent: \"完成翠綠 #10B981\"\ntexture:\n  - 三欄看板列框 (opacity: 0.16)\n  - 便利貼卡片輪廓 (opacity: 0.14)\n  - 任務標籤矩形 (opacity: 0.10)\nlighting: 中央進行中欄位紫光散射\nmood: 迭代、動能、持續推進\nratio: 16:9\nresolution: 8K" }
+  ]},
+  { cat:"宇宙星際系", icon:"🌌", styles:[
+    { name:"量子科技傳播風", colors:["#000814","#0077B6","#00B4D8"], desc:"宇宙黑＋量子藍，粒子波形，前沿科技",
+      nat:"生成高品質抽象背景海報，使用深宇宙黑與量子藍漸層，融入粒子訊號散射波形、量子糾纏連線弧形與數位光子流動軌跡，添加中央量子光場向外爆發，呈現尖端量子科技傳播美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 量子科技傳播風\ncolors:\n  primary: \"深宇宙黑 #000814\"\n  secondary: \"量子藍 #0077B6\"\n  accent: \"光子青 #00B4D8\"\ntexture:\n  - 粒子訊號散射波形 (opacity: 0.22)\n  - 量子糾纏連線弧形 (opacity: 0.18)\n  - 光子流動軌跡 (opacity: 0.14)\nlighting: 中央量子光場爆發\nmood: 尖端、科技、前沿\nratio: 16:9\nresolution: 8K" },
+    { name:"全球視野俯瞰風", colors:["#030B1A","#E8EFF7","#93C5FD"], desc:"宇宙深藍＋銀白，世界地圖航線，宏觀",
+      nat:"生成高品質抽象背景海報，使用深宇宙藍與銀白漸層，融入半透明世界地圖輪廓線、全球連接弧線航跡與微型位置標記點，添加下方地球弧面銀白光弧向上湧現，呈現跨國企業全球佈局宏觀戰略美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 全球視野俯瞰風\ncolors:\n  primary: \"深宇宙藍 #030B1A\"\n  secondary: \"銀白 #E8EFF7\"\n  accent: \"冰藍弧線 #93C5FD\"\ntexture:\n  - 世界地圖輪廓線 (opacity: 0.14)\n  - 全球連接弧線 (opacity: 0.16)\n  - 位置標記點 (opacity: 0.12)\nlighting: 下方地球弧面銀白光弧\nmood: 宏觀、戰略、全球格局\nratio: 16:9\nresolution: 8K" },
+    { name:"宇宙星際戰略風", colors:["#010718","#1B2CC1","#7209B7"], desc:"宇宙深黑＋星際藍紫，星雲渦旋，宏觀視野",
+      nat:"生成高品質抽象背景海報，使用深宇宙黑與星際藍紫漸層，融入星雲渦旋光雲、銀河光帶斜飄與微型星點散落，添加中央宇宙能量核心向外爆發的紫藍光場，呈現宏觀視野星際戰略美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 宇宙星際戰略風\ncolors:\n  primary: \"宇宙深黑 #010718\"\n  secondary: \"星際藍 #1B2CC1\"\n  accent: \"星雲紫 #7209B7\"\ntexture:\n  - 星雲渦旋光雲 (opacity: 0.30)\n  - 銀河光帶 (opacity: 0.20)\n  - 微型星點散落 (opacity: 0.15)\nlighting: 中央宇宙能量核心紫藍爆發\nmood: 宏觀、宇宙格局、壯闊\nratio: 16:9\nresolution: 8K" },
+    { name:"量子運算科技風", colors:["#00001A","#0096FF","#00FFD1"], desc:"深宇宙黑＋量子藍青，電路節點，前沿科技",
+      nat:"生成高品質抽象背景海報，使用深黑與量子藍青漸層，融入量子電路節點互連圖案、量子疊加態光波圈紋理與糾纏光線連接弧形，添加中央量子核心藍白光場向外爆發，呈現前沿量子運算科技專案美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 量子運算科技風\ncolors:\n  primary: \"深宇宙黑 #00001A\"\n  secondary: \"量子藍 #0096FF\"\n  accent: \"量子青 #00FFD1\"\ntexture:\n  - 量子電路節點 (opacity: 0.20)\n  - 疊加態光波圈 (opacity: 0.16)\n  - 糾纏光線弧形 (opacity: 0.14)\nlighting: 中央量子藍白核心爆發\nmood: 前沿、量子、尖端科技\nratio: 16:9\nresolution: 8K" },
+    { name:"業績成長火箭風", colors:["#05050F","#FF4500","#FFD700"], desc:"宇宙黑＋火焰橘紅，火箭尾焰，突破衝刺",
+      nat:"生成高品質抽象背景海報，使用深宇宙黑與火焰橘紅漸層，融入火箭上升尾焰軌跡、向上突破折線圖輪廓與衝刺速度粒子流，添加左下角向右上方衝破的橘紅光柱，呈現業績飛躍成長火箭美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 業績成長火箭風\ncolors:\n  primary: \"深宇宙黑 #05050F\"\n  secondary: \"火焰橘紅 #FF4500\"\n  accent: \"太陽黃 #FFD700\"\ntexture:\n  - 火箭尾焰軌跡 (opacity: 0.35)\n  - 向上折線圖輪廓 (opacity: 0.16)\n  - 衝刺粒子流 (opacity: 0.20)\nlighting: 左下發射點橘紅光柱突破\nmood: 突破、衝刺、業績飛躍\nratio: 16:9\nresolution: 8K" },
+    { name:"客戶關係星圖風", colors:["#030B1A","#F4C430","#9B59B6"], desc:"深夜藍＋星光金，星座連線，廣佈關係",
+      nat:"生成高品質抽象背景海報，使用深夜藍與星光金漸層，融入星座連線客戶關係圖、大小不一光點星球節點與宇宙星雲霧氣，添加中央核心客戶星光向四周延伸的金色關係連線，呈現客戶關係星際網絡美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 客戶關係星圖風\ncolors:\n  primary: \"深夜藍 #030B1A\"\n  secondary: \"星光金 #F4C430\"\n  accent: \"星雲紫 #9B59B6\"\ntexture:\n  - 星座連線關係圖 (opacity: 0.18)\n  - 光點星球節點 (opacity: 0.20)\n  - 宇宙星雲霧氣 (opacity: 0.12)\nlighting: 中央核心星光金色連線放射\nmood: 宏觀、關係網絡、廣佈\nratio: 16:9\nresolution: 8K" },
+    { name:"深海探索藍金風", colors:["#020B18","#0077B6","#F4C430"], desc:"深海黑藍＋探索金，光柱穿透，神秘探索",
+      nat:"生成高品質抽象背景海報，使用深海黑藍與探索金漸層，融入深海水流光折射紋理、金色探照燈光柱從上方穿透水層效果與細微氣泡粒子散落，添加中上方金色光柱向下射入深海的戲劇感，呈現神秘深海探索銷售美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 深海探索藍金風\ncolors:\n  primary: \"深海黑藍 #020B18\"\n  secondary: \"海洋藍 #0077B6\"\n  accent: \"探索金 #F4C430\"\ntexture:\n  - 深海水流光折射 (opacity: 0.22)\n  - 探照燈光柱穿透 (opacity: 0.30)\n  - 細微氣泡粒子 (opacity: 0.15)\nlighting: 中上方金色光柱向下射入\nmood: 神秘、探索、深邃\nratio: 16:9\nresolution: 8K" },
+    { name:"工業現場操作風", colors:["#1F2937","#EA580C","#FCD34D"], desc:"鋼鐵深灰＋工業橘，金屬網格，臨場感",
+      nat:"生成高品質抽象背景海報，使用鋼鐵深灰與工業橘漸層，融入金屬網格鋼板紋理、六角螺栓圖案與工業藍圖線稿輪廓，添加左側強烈工廠側光射入，呈現堅實可靠第一線現場管理美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 工業現場操作風\ncolors:\n  primary: \"鋼鐵深灰 #1F2937\"\n  secondary: \"工業橘 #EA580C\"\n  accent: \"安全黃 #FCD34D\"\ntexture:\n  - 金屬網格鋼板 (opacity: 0.20)\n  - 六角螺栓圖案 (opacity: 0.12)\n  - 工業藍圖線稿 (opacity: 0.10)\nlighting: 左側強烈工廠側光\nmood: 堅實、臨場感、可靠\nratio: 16:9\nresolution: 8K" }
+  ]},
+  { cat:"霓虹動感系", icon:"⚡", styles:[
+    { name:"媒體傳播動態波浪風", colors:["#0A0A0A","#DC2626","#FF6B35"], desc:"深黑＋鮮紅，廣播波紋，強勢爆發",
+      nat:"生成高品質抽象背景海報，使用深黑與鮮紅漸層，融入向外擴散的同心圓廣播波紋與流動聲波線條，添加從左側中心爆發的訊號光環，呈現強勢媒體傳播動態美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 媒體傳播動態波浪風\ncolors:\n  primary: \"深黑 #0A0A0A\"\n  secondary: \"鮮紅 #DC2626\"\n  accent: \"橙紅光暈 #FF6B35\"\ntexture:\n  - 同心圓廣播波紋 (opacity: 0.25)\n  - 流動聲波線條 (opacity: 0.18)\nlighting: 左側中心訊號光環爆發\nmood: 強勢、爆發力、傳播力\nratio: 16:9\nresolution: 8K" },
+    { name:"社群媒體霓虹互動風", colors:["#0D0518","#FF2D9B","#00C3FF"], desc:"深紫黑＋霓虹粉＋電藍，節點網路，年輕",
+      nat:"生成高品質抽象背景海報，使用深紫黑與霓虹粉紅電光藍漸層，融入六邊形社群圖示輪廓、愛心光點散落與節點網路連線，添加多點霓虹色光暈散射，呈現新世代社群公關活力數位美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 社群媒體霓虹互動風\ncolors:\n  primary: \"深紫黑 #0D0518\"\n  secondary: \"霓虹粉紅 #FF2D9B\"\n  accent: \"電光藍 #00C3FF\"\ntexture:\n  - 六邊形社群圖示 (opacity: 0.20)\n  - 節點網路連線 (opacity: 0.18)\n  - 愛心光點散落 (opacity: 0.15)\nlighting: 多點霓虹色光暈分散\nmood: 活躍、病毒傳播、年輕世代\nratio: 16:9\nresolution: 8K" },
+    { name:"賽博龐克現場風", colors:["#0A0014","#FF0066","#00FFCC"], desc:"深黑＋霓虹粉＋賽博青，未來工廠感",
+      nat:"生成高品質抽象背景海報，使用深黑與霓虹粉及賽博青三色漸層，融入賽博龐克城市輪廓線條、霓虹光管框架與雨夜潮濕地面反光紋理，添加頂部霓虹燈管洩漏光效向下打光，呈現未來賽博龐克現場管理美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 賽博龐克現場風\ncolors:\n  primary: \"深黑 #0A0014\"\n  secondary: \"霓虹粉紅 #FF0066\"\n  accent: \"賽博青 #00FFCC\"\ntexture:\n  - 賽博城市輪廓線條 (opacity: 0.20)\n  - 霓虹光管框架 (opacity: 0.25)\n  - 雨夜地面反光 (opacity: 0.15)\nlighting: 頂部霓虹燈管洩漏光向下\nmood: 未來、賽博龐克、強烈對比\nratio: 16:9\nresolution: 8K" },
+    { name:"霓虹科技HR風", colors:["#0A0A1A","#FF6B6B","#4ECDC4"], desc:"深黑＋霓虹紅青，數位人才，未來HR感",
+      nat:"生成高品質抽象背景海報，使用深黑與霓虹紅青漸層，融入數位人才輪廓掃描線框、生物特徵光點圖案與 DNA 螺旋抽象輪廓，添加中央霓虹紅青雙色光場散射，呈現數位科技未來 HR 美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 霓虹科技HR風\ncolors:\n  primary: \"深黑 #0A0A1A\"\n  secondary: \"霓虹紅 #FF6B6B\"\n  accent: \"賽博青 #4ECDC4\"\ntexture:\n  - 人才掃描線框 (opacity: 0.18)\n  - 生物特徵光點 (opacity: 0.15)\n  - DNA螺旋輪廓 (opacity: 0.12)\nlighting: 中央霓虹雙色光場\nmood: 數位、未來、科技人才\nratio: 16:9\nresolution: 8K" },
+    { name:"創意潑墨爆炸風", colors:["#000000","#FF1744","#00E676"], desc:"純黑＋多彩潑墨，爆炸粒子，大膽前衛",
+      nat:"生成高品質抽象背景海報，使用純黑底色與多彩潑墨漸層，融入動態油漆潑濺爆炸紋理、彩色粒子飛散軌跡與顏料滴落痕跡，添加左下角多彩爆炸光束向右上方迸發，呈現大膽前衛創意行銷美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 創意潑墨爆炸風\ncolors:\n  primary: \"純黑 #000000\"\n  secondary: \"品牌紅 #FF1744\"\n  accent: \"電光藍 #00B0FF\"\n  accent_colors:\n    - \"霓虹黃 #FFEA00\"\n    - \"螢光綠 #00E676\"\ntexture:\n  - 動態潑墨爆炸 (opacity: 0.45)\n  - 彩色粒子飛散 (opacity: 0.30)\n  - 顏料滴落軌跡 (opacity: 0.20)\nlighting: 左下角多彩爆炸光束\nmood: 爆發力、創意無限、大膽\nratio: 16:9\nresolution: 8K" },
+    { name:"社群像素藝術風", colors:["#08080F","#FF6FD8","#00FFFF"], desc:"深空黑＋霓虹多彩，像素方塊，數位復古",
+      nat:"生成高品質抽象背景海報，使用深空黑與霓虹多彩漸層，融入大像素馬賽克方塊排列、8-bit 風格圖示輪廓與像素字體浮水印，添加對角線像素彩色光帶流動，呈現年輕世代社群像素藝術美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 社群像素藝術風\ncolors:\n  primary: \"深空黑 #08080F\"\n  secondary: \"霓虹粉 #FF6FD8\"\n  accent: \"電光青 #00FFFF\"\n  accent_colors:\n    - \"像素黃 #FFE600\"\n    - \"遊戲綠 #39FF14\"\ntexture:\n  - 像素馬賽克方塊 (opacity: 0.30)\n  - 8-bit 圖示輪廓 (opacity: 0.18)\n  - 像素字體浮水印 (opacity: 0.06)\nlighting: 左上至右下對角像素光帶\nmood: 年輕、活躍、數位復古\nratio: 16:9\nresolution: 8K" },
+    { name:"霓虹賽博銷售風", colors:["#06001A","#FF00FF","#00FFFF"], desc:"深紫黑＋品紅賽博青，霓虹城市，未來感",
+      nat:"生成高品質抽象背景海報，使用深紫黑與品紅賽博青漸層，融入賽博龐克城市輪廓剪影、霓虹招牌光管框架與雨夜濕地面霓虹反射，添加頂部霓虹光管洩漏光向下打亮，呈現賽博龐克未來業務銷售美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 霓虹賽博銷售風\ncolors:\n  primary: \"深紫黑 #06001A\"\n  secondary: \"品紅 #FF00FF\"\n  accent: \"賽博青 #00FFFF\"\ntexture:\n  - 賽博城市輪廓剪影 (opacity: 0.22)\n  - 霓虹光管框架 (opacity: 0.28)\n  - 雨夜地面反射 (opacity: 0.18)\nlighting: 頂部霓虹燈管洩漏光向下\nmood: 賽博龐克、未來、強烈霓虹\nratio: 16:9\nresolution: 8K" },
+    { name:"市場競爭棋盤風", colors:["#1A0000","#FFFFF0","#CC0000"], desc:"深紅黑＋象牙白，棋盤對弈，策略博弈",
+      nat:"生成高品質抽象背景海報，使用深紅黑與象牙白棋盤漸層，融入透視角度棋盤格局、西洋棋棋子剪影輪廓與策略移動路線箭頭，添加中央聚光燈式打亮對弈核心區域，呈現市場競爭策略博弈棋局美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 市場競爭棋盤風\ncolors:\n  primary: \"深紅黑 #1A0000\"\n  secondary: \"象牙白 #FFFFF0\"\n  accent: \"競爭紅 #CC0000\"\ntexture:\n  - 透視棋盤格局 (opacity: 0.22)\n  - 棋子剪影輪廓 (opacity: 0.18)\n  - 策略移動箭頭 (opacity: 0.14)\nlighting: 中央聚光燈打亮對弈核心\nmood: 策略、博弈、競爭謀略\nratio: 16:9\nresolution: 8K" }
+  ]}
+];
+
+let curCat = 0, curStyle = null, customMode = false, mode = 'nat';
+let _customNat = null, _customYaml = null;
+const CUSTOM_NAT_TPL = `生成高品質抽象背景海報，使用（主色調）與（副色調）漸層作為主色調，融入（紋理描述）來增加（視覺質感），添加（光源與光效描述）以營造（情境氛圍），（留白區域說明）以便放置文字內容，讓整體呈現（設計風格描述）美學，8K 解析度，比例 16:9，確保背景不干擾前景資訊閱讀。`;
+const CUSTOM_YAML_TPL = `style: （風格名稱）
+colors:
+  primary: "（主色調名稱 #Hex色碼）"
+  secondary: "（副色調名稱 #Hex色碼）"
+  accent: "（強調色名稱 #Hex色碼）"
+texture:
+  - （紋理描述一） (opacity: 0.15)
+  - （紋理描述二） (opacity: 0.12)
+lighting: （光源位置與光效描述）
+mood: （關鍵詞一、關鍵詞二、關鍵詞三）
+ratio: 16:9
+resolution: 8K`;
+
+function renderCats() {
+  document.getElementById('catTabs').innerHTML = DATA.map((d,i) =>
+    `<button class="cat-btn${i===curCat?' active':''}" onclick="setCat(${i})">${d.icon} ${d.cat}</button>`
+  ).join('');
+}
+
+function renderStyles() {
+  const cards = DATA[curCat].styles.map((s,i) => {
+    const sel = !customMode && curStyle && curStyle.c===curCat && curStyle.s===i;
+    const grad = `linear-gradient(90deg,${s.colors.join(',')})`;
+    return `<div class="style-card${sel?' active':''}" onclick="pickStyle(${curCat},${i})">
+      <div class="color-bar" style="background:${grad}"></div>
+      <div class="style-card-body">
+        <div class="style-name">${s.name}</div>
+        <div class="style-desc">${s.desc}</div>
+      </div>
+    </div>`;
+  });
+  const customCard = `<div class="style-card${customMode?' active':''}" onclick="pickCustom()">
+    <div class="color-bar" style="background:repeating-linear-gradient(135deg,#dde3ea 0,#dde3ea 4px,#f1f5f9 4px,#f1f5f9 8px);display:flex;align-items:center;justify-content:center">
+      <span style="position:relative;z-index:2;font-size:1.5rem">✏️</span>
+    </div>
+    <div class="style-card-body">
+      <div class="style-name">自訂風格</div>
+      <div class="style-desc">手動輸入自訂視覺風格指令</div>
+    </div>
+  </div>`;
+  document.getElementById('styleGrid').innerHTML = cards.join('') + customCard;
+}
+
+function setCat(i) {
+  saveCustomContent();
+  curCat=i; curStyle=null;
+  renderCats(); renderStyles();
+  if(customMode) { renderCustomPreview(); } else { document.getElementById('stylePreview').style.display='none'; }
+}
+function pickStyle(c,s) { saveCustomContent(); customMode=false; curStyle={c,s}; renderStyles(); renderPreview(c,s); generate(); }
+
+function saveCustomContent() {
+  const n=document.getElementById('custom-nat'), y=document.getElementById('custom-yaml');
+  if(n) _customNat=n.value;
+  if(y) _customYaml=y.value;
+}
+function pickCustom() {
+  saveCustomContent(); customMode=true; curStyle=null; renderStyles(); renderCustomPreview(); generate();
+}
+function renderCustomPreview() {
+  const pv=document.getElementById('stylePreview');
+  pv.style.display='block';
+  pv.innerHTML=`
+<div class="preview-section-label" style="margin-bottom:10px">▸ 選取樣式：自訂風格</div>
+<div class="field">
+  <label>自然語言格式 <span class="tag">NAT</span></label>
+  <textarea id="custom-nat" rows="5" oninput="saveCustomContent();generate()"></textarea>
+</div>
+<div class="field" style="margin-top:12px">
+  <label>YAML 格式 <span class="tag">YAML</span></label>
+  <textarea id="custom-yaml" rows="11" style="font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:0.8rem" oninput="saveCustomContent();generate()"></textarea>
+</div>
+<p style="font-size:0.73rem;color:#94a3b8;margin-top:8px">依上方選擇的格式（自然語言 / YAML）輸出對應欄位內容</p>`;
+  document.getElementById('custom-nat').value = _customNat!==null ? _customNat : CUSTOM_NAT_TPL;
+  document.getElementById('custom-yaml').value = _customYaml!==null ? _customYaml : CUSTOM_YAML_TPL;
+}
+function isLight(hex) {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return (r*299+g*587+b*114)/1000 > 140;
+}
+function getMood(yamlStr) {
+  const m = yamlStr.match(/^mood:\s*(.+)$/m);
+  return m ? m[1] : '';
+}
+function renderPreview(c, s) {
+  const st = DATA[c].styles[s];
+  const pv = document.getElementById('stylePreview');
+  pv.style.display = 'block';
+  const cols = st.colors;
+  const grad = `linear-gradient(135deg, ${cols.join(', ')})`;
+  const light = isLight(cols[0]);
+  const tc = light ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.92)';
+  const lc = light ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.28)';
+  const colorLabels = ['主色', '副色', '強調色'];
+  const mood = getMood(st.yaml);
+  pv.innerHTML = `
+<div class="preview-section-label" style="margin-bottom:10px">▸ 選取樣式：${st.name}</div>
+<div class="preview-grid">
+  <div>
+    <div class="preview-section-label">模擬效果</div>
+    <div class="mock-slide" style="background:${grad}">
+      <div style="position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,0.10) 0%,rgba(0,0,0,0.22) 100%)"></div>
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 25% 40%,rgba(255,255,255,0.13) 0%,transparent 55%)"></div>
+      <div style="position:relative;z-index:2;padding:10% 8%;height:100%;display:flex;flex-direction:column;justify-content:center">
+        <div style="font-size:0.8rem;font-weight:700;color:${tc};margin-bottom:4%">${st.name}</div>
+        <div style="width:38%;height:2px;background:${lc};border-radius:1px;margin-bottom:5%"></div>
+        ${[58,74,48].map(w=>`<div style="display:flex;align-items:center;gap:5px;margin-bottom:3%"><div style="width:4px;height:4px;border-radius:50%;background:${lc};flex-shrink:0"></div><div style="height:2px;width:${w}%;background:${lc};border-radius:1px"></div></div>`).join('')}
+      </div>
+      <div style="position:absolute;bottom:7%;right:6%;font-size:0.58rem;color:${tc};opacity:0.45">${DATA[c].icon} ${DATA[c].cat}</div>
+    </div>
+  </div>
+  <div>
+    <div class="preview-section-label">色彩方案</div>
+    <div style="display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap">
+      ${cols.map((col,i)=>`<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div class="color-dot" style="background:${col};box-shadow:0 0 10px ${col}55"></div>
+        <div style="font-size:0.64rem;color:#64748b">${colorLabels[i]||''}</div>
+        <div style="font-size:0.6rem;color:#475569;font-family:monospace">${col}</div>
+      </div>`).join('')}
+    </div>
+    <div class="preview-section-label">風格描述</div>
+    <div style="font-size:0.8rem;color:#94a3b8;margin-bottom:12px;line-height:1.65">${st.desc}</div>
+    <div class="preview-section-label">情境氛圍</div>
+    <div>${mood.split('、').map(m=>`<span class="preview-mood-tag">${m}</span>`).join('')}</div>
+  </div>
+</div>`;
+}
+
+function setMode(m, btn) {
+  mode=m;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  generate();
+}
+
+function selBgOpt(groupId, btn) {
+  const isActive = btn.classList.contains('active');
+  document.querySelectorAll('#' + groupId + ' .info-btn').forEach(b => b.classList.remove('active'));
+  if (!isActive) btn.classList.add('active');
+  generate();
+}
+
+function getBgOpt(groupId) {
+  const a = document.querySelector('#' + groupId + ' .info-btn.active');
+  return a ? a.dataset.v : '';
+}
+
+function generate() {
+  const p = document.getElementById('f-persona').value.trim();
+  const t = document.getElementById('f-task').value.trim();
+  const c = document.getElementById('f-context').value.trim();
+  const f = document.getElementById('f-format').value.trim();
+  const tone = getBgOpt('bg-tone');
+  const audience = getBgOpt('bg-audience');
+  const box = document.getElementById('output');
+  if(!p&&!t&&!c&&!f&&!curStyle&&!customMode&&!tone&&!audience) {
+    box.className='output-full empty';
+    box.textContent='填入欄位或選擇風格，即時生成提示詞';
+    return;
+  }
+  let styleBlock = '（尚未選擇視覺風格）';
+  if(customMode) {
+    saveCustomContent();
+    styleBlock = mode==='nat' ? (_customNat||'') : (_customYaml||'');
+  } else if(curStyle) {
+    const s = DATA[curStyle.c].styles[curStyle.s];
+    styleBlock = mode==='nat' ? s.nat : s.yaml;
+  }
+  const parts = [];
+  if(p) parts.push(`【角色 Persona】\n${p}`);
+  if(t) parts.push(`【任務 Task】\n${t}`);
+  if(c) parts.push(`【內容背景 Context】\n${c}`);
+  if(f) parts.push(`【格式要求 Format】\n${f}`);
+  if(tone) parts.push(`【溝通語氣】\n${tone}`);
+  if(audience) parts.push(`【目標受眾】\n${audience}`);
+  parts.push(`【視覺風格指令】\n${styleBlock}`);
+  box.className='output-full';
+  box.textContent = parts.join('\n\n');
+}
+
+function doCopy() {
+  const box = document.getElementById('output');
+  if(box.classList.contains('empty')) return;
+  navigator.clipboard.writeText(box.textContent).then(()=>{
+    const b = document.getElementById('copyBtn');
+    b.textContent='已複製 ✓'; b.classList.add('ok');
+    setTimeout(()=>{ b.textContent='複製'; b.classList.remove('ok'); }, 2000);
+  });
+}
+
+renderCats(); renderStyles();
+
+document.getElementById('i-persona').value = '資深護理師';
+document.getElementById('i-task').value = '重新設計衛教單張圖文';
+document.getElementById('i-context').value = '對象是病人及家屬，需依照文件文字及圖片內容呈現圖文，要淺顯易懂重點都要呈現';
+
+// ─── 拖曳分隔線 ──────────────────────────────────────────────────────────────
+(function() {
+  const resizer   = document.getElementById('resizer');
+  const leftPanel = document.getElementById('left-panel');
+  let dragging = false;
+  resizer.addEventListener('mousedown', e => {
+    dragging = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    resizer.classList.add('dragging');
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const rect = document.querySelector('.main-panels').getBoundingClientRect();
+    const w = e.clientX - rect.left;
+    if (w >= 240 && w <= rect.width * 0.82) leftPanel.style.width = w + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    resizer.classList.remove('dragging');
+  });
+})();
+
+// ─── 全部清除 ─────────────────────────────────────────────────────────────────
+function clearAll() {
+  const isBg = document.getElementById('panel-bg').style.display !== 'none';
+  if (isBg) {
+    ['f-persona','f-task','f-context','f-format'].forEach(id => { document.getElementById(id).value = ''; });
+    document.querySelectorAll('#bg-tone .info-btn, #bg-audience .info-btn').forEach(b => b.classList.remove('active'));
+    curStyle = null; customMode = false;
+    renderStyles();
+    document.getElementById('stylePreview').style.display = 'none';
+    const out = document.getElementById('output');
+    out.className = 'output-full empty';
+    out.textContent = '填入欄位或選擇風格，即時生成提示詞';
+  } else {
+    document.getElementById('i-persona').value = '資深護理師';
+    document.getElementById('i-task').value = '重新設計衛教單張圖文';
+    document.getElementById('i-context').value = '對象是病人及家屬，需依照文件文字及圖片內容呈現圖文，要淺顯易懂重點都要呈現';
+    document.getElementById('i-page').value = 1;
+    document.getElementById('i-from').value = 1;
+    document.getElementById('i-to').value   = 4;
+    updateBatchCalc();
+    generateInfo();
+  }
+}
+
+// ─── 資訊圖表分頁 ────────────────────────────────────────────────────────────
+
+const CN = ['零','一','二','三','四','五','六','七','八','九','十',
+             '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十',
+             '二十一','二十二','二十三','二十四','二十五','二十六','二十七','二十八','二十九','三十'];
+function toCN(n) { return CN[n] || String(n); }
+
+function toggleBatch() {
+  const on = document.getElementById('i-batch').checked;
+  document.getElementById('batch-panel').style.display = on ? '' : 'none';
+  if (on) updateBatchCalc();
+  generateInfo();
+}
+
+function updateBatchCalc() {
+  const page  = parseInt(document.getElementById('i-page').value) || 1;
+  const fromN = parseInt(document.getElementById('i-from').value) || 1;
+  const toN   = parseInt(document.getElementById('i-to').value)   || 4;
+  document.getElementById('batch-calc').textContent =
+    `第 ${page} 頁・主題項目第 ${toCN(fromN)} 至第 ${toCN(toN)} 項`;
+  generateInfo();
+}
+
+function switchPage(id, btn) {
+  document.getElementById('panel-bg').style.display   = id === 'bg'   ? 'flex' : 'none';
+  document.getElementById('panel-info').style.display = id === 'info' ? 'flex' : 'none';
+  document.getElementById('rp-bg').style.display      = id === 'bg'   ? 'flex' : 'none';
+  document.getElementById('rp-info').style.display    = id === 'info' ? 'flex' : 'none';
+  document.querySelectorAll('.page-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function selInfo(groupId, btn) {
+  document.querySelectorAll('#' + groupId + ' .info-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  generateInfo();
+}
+
+function getInfoSel(groupId) {
+  const a = document.querySelector('#' + groupId + ' .info-btn.active');
+  return a ? a.dataset.v : '';
+}
+
+const ICOLORS = {
+  '醫療藍白': { bg:'#EBF5FF', ac:'#2563EB', ac_n:'清新藍',  sub:'#BFDBFE', head:'深藍'   },
+  '溫暖橘白': { bg:'#FFF8F3', ac:'#F97316', ac_n:'暖橘',    sub:'#FED7AA', head:'暖橘'   },
+  '自然綠白': { bg:'#F0FDF4', ac:'#16A34A', ac_n:'自然綠',  sub:'#BBF7D0', head:'深綠'   },
+  '柔和粉白': { bg:'#FFF1F2', ac:'#E11D48', ac_n:'柔粉',    sub:'#FECDD3', head:'玫瑰紅' }
+};
+
+const ISTYLES = {
+  'flat':       { name:'扁平設計',   kw:'flat vector design, clean geometric icons, no shadows, no gradients, crisp lines' },
+  'clay':       { name:'柔和3D黏土', kw:'3D clay render style, soft rounded forms, warm pastel lighting, smooth clay surface, claymation aesthetic, gentle depth' },
+  'semi':       { name:'半寫實插畫', kw:'semi-realistic digital illustration, soft shading, warm natural tones, detailed but stylized, editorial illustration style' },
+  'watercolor': { name:'溫暖水彩',   kw:'watercolor illustration, soft warm palette, hand-painted texture, gentle brushstrokes, watercolor wash background, loose artistic style' },
+  'iso':        { name:'等角立體',   kw:'isometric illustration, isometric 3D perspective, clean lines, soft colors, geometric isometric style, consistent vanishing point' },
+  '2.5d':       { name:'日式2.5D',  kw:'2.5D illustration, Japanese health education style, clean outline, soft gradient fill, slightly dimensional flat design, character with volume' }
+};
+
+function buildInfoFormat(layout, colorKey, audience) {
+  const c         = ICOLORS[colorKey] || ICOLORS['醫療藍白'];
+  const styleKey  = getInfoSel('i-style') || 'flat';
+  const styleSpec = ISTYLES[styleKey] || ISTYLES['flat'];
+  const isVert    = layout !== '橫式16:9';
+  const ratio     = layout === '直式9:16' ? '9:16' : layout === '方形1:1' ? '1:1' : '16:9';
+  const flowDir   = isVert ? '由上至下' : '由左至右';
+
+  let batchNote = '';
+  const isBatch = document.getElementById('i-batch').checked;
+  if (isBatch) {
+    const page  = parseInt(document.getElementById('i-page').value) || 1;
+    const fromN = parseInt(document.getElementById('i-from').value) || 1;
+    const toN   = parseInt(document.getElementById('i-to').value)   || 4;
+    const n     = toN - fromN + 1;
+    batchNote =
+      `\n\n【系列連貫規格 — 第 ${page} 頁，主題項目第 ${toCN(fromN)} 至第 ${toCN(toN)}，共 ${n} 個內容區塊】\n` +
+      `上述編號指一級大項序號，細項從屬於其大項不另立計算，各區塊內容結構忠實反映原文\n` +
+      `本段呈現第${toCN(fromN)}至第${toCN(toN)}大項，` +
+      (fromN > 1 ? `接續上一張第${toCN(fromN - 1)}大項之後，` : ``) +
+      `編號不從第一重新起算\n` +
+      `下列規格為整個系列的強制統一標準，本張圖片必須與其他張完全相同：\n` +
+      `・條目卡片：白色底、邊框 1px 實線 #E2E8F0、圓角 8px、四邊內距 16px\n` +
+      `・編號徽章：直徑 36px 圓形、${c.ac}色底白字、居左對齊條目上方\n` +
+      `・條目標題：粗體、顏色 ${c.ac}、字級與上下張一致\n` +
+      `・說明文字：深灰 #374151、行距 1.6、不加粗\n` +
+      `・條目間距：12px、整體版面上下左右留白 16px\n` +
+      `・圖示樣式：大小、線條粗細、與文字的相對位置，與系列其他張完全一致`;
+  }
+
+  const mainBlock =
+    `依照衛教單張原始內容順序，${flowDir}完整呈現所有段落，` +
+    `每區塊包含：${c.ac_n}色編號或標題區域（粗體）、對應說明文字、與原始圖示相符的插圖`;
+
+  const audienceNotes = {
+    '患者本人': '設計對象為患者：字體偏大、語言淺顯易懂，避免複雜術語，善用圖示輔助理解',
+    '患者家屬': '設計對象為患者家屬：語氣親切，著重居家照護步驟與觀察要點',
+    '醫護人員': '設計對象為醫護人員：可使用專業術語，排版緊湊，資訊密度較高'
+  };
+  const audienceNote = audienceNotes[audience] || '';
+
+  const warningBlock =
+    `\n\n【警示元素規格（強制，不受整體風格影響）】\n` +
+    `禁止符號（🚫 ❌ ⛔）：鮮紅色 #DC2626、黑色粗外框 3-4px、尺寸比一般圖示大 20-30%\n` +
+    `警示框：淺紅底色（#FEF2F2）+ 深紅邊框（#DC2626）、說明文字加粗\n` +
+    `食物禁忌或行為禁止：圖示加紅色斜線覆蓋（slash overlay），清晰易辨\n` +
+    `無論整體配色多柔和，警示元素一律維持高對比，確保視覺上一目了然`;
+
+  return `純內容區塊資訊圖表，比例 ${ratio}：
+【資料來源】請參考已上傳至 NotebookLM 的衛教單張，依照原始內容的順序，將圖文內容完整轉換呈現
+【版面規定】圖中不顯示任何標題文字（包含章節標題、文件名稱），不顯示醫院名稱、作者、日期、文獻引用或參考出處，直接從第一個內容條目開始呈現
+【內容萃取】若提供的內容包含文件標題、機構名稱、作者資訊、日期、引用文獻等非內文元素，請全部略過，只萃取並視覺化實際的衛教說明段落
+【層級規定】以衛教單張的一級大項（主標題段落）為計算單位，一個大項算一個區塊，不將細項或子點拆分為獨立區塊；每個區塊的內部結構忠實反映原文：原文有細項列表則呈現列表，原文只有段落文字則只呈現段落文字，不自行新增或移除任何層級
+${mainBlock}
+條目之間用淺色細分隔線區隔，版面留白適中、整體視覺清爽
+整體插圖風格：${styleSpec.name}（${styleSpec.kw}）
+主色系：${c.ac_n}（強調色 ${c.ac}）、底色 ${c.bg}、輔色 ${c.sub}
+背景使用 ${c.bg} 或純白，所有文字清晰易讀，中文字體適中
+${audienceNote}
+高品質輸出，比例 ${ratio}${batchNote}${warningBlock}`;
+}
+
+function generateInfo() {
+  const p = document.getElementById('i-persona').value.trim();
+  const t = document.getElementById('i-task').value.trim();
+  const c = document.getElementById('i-context').value.trim();
+  const box = document.getElementById('info-output');
+  if (!p && !t && !c) {
+    box.className = 'output-full empty';
+    box.textContent = '設定規格後即時生成提示詞';
+    return;
+  }
+
+  const layout   = getInfoSel('i-layout');
+  const colorKey = getInfoSel('i-color');
+  const audience = getInfoSel('i-audience');
+
+  const fmt   = buildInfoFormat(layout, colorKey, audience);
+  const parts = [];
+  if (p) parts.push('【角色 Persona】\n' + p);
+  if (t) parts.push('【任務 Task】\n' + t);
+  if (c) parts.push('【內容背景 Context】\n' + c);
+  parts.push('【資訊圖表規格 Format】\n' + fmt);
+
+  box.className = 'output-full';
+  box.textContent = parts.join('\n\n');
+}
+
+function doInfoCopy() {
+  const box = document.getElementById('info-output');
+  if (box.classList.contains('empty')) return;
+  navigator.clipboard.writeText(box.textContent).then(() => {
+    const b = document.getElementById('infoCopyBtn');
+    b.textContent = '已複製 ✓'; b.classList.add('ok');
+    setTimeout(() => { b.textContent = '複製'; b.classList.remove('ok'); }, 2000);
+  });
+}
+
+generateInfo();
+</script>
+</body>
+</html>

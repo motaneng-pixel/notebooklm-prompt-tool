@@ -212,6 +212,13 @@ input[type=text]::placeholder, textarea::placeholder { color: #334155; }
             <button class="info-btn" onclick="selInfo('i-style',this)" data-v="iso">等角立體</button>
             <button class="info-btn" onclick="selInfo('i-style',this)" data-v="2.5d">日式 2.5D</button>
           </div>
+          <div id="info-style-preview" style="margin-top:10px;display:block">
+            <div class="preview-section-label" style="margin-bottom:6px;font-size:0.72rem;color:#64748b">▸ 實際生成範例</div>
+            <img id="info-style-img" src="images/info-0.jpg" alt="風格範例"
+              style="width:100%;border-radius:8px;border:1px solid #334155;cursor:pointer;display:block"
+              onclick="openLightbox(this.src, this.alt)"
+              onerror="document.getElementById('info-style-preview').style.display='none'">
+          </div>
         </div>
         <div class="field">
           <label>目標受眾</label>
@@ -438,6 +445,40 @@ const DATA = [
     { name:"市場競爭棋盤風", colors:["#1A0000","#FFFFF0","#CC0000"], desc:"深紅黑＋象牙白，棋盤對弈，策略博弈",
       nat:"生成高品質抽象背景海報，使用深紅黑與象牙白棋盤漸層，融入透視角度棋盤格局、西洋棋棋子剪影輪廓與策略移動路線箭頭，添加中央聚光燈式打亮對弈核心區域，呈現市場競爭策略博弈棋局美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
       yaml:"style: 市場競爭棋盤風\ncolors:\n  primary: \"深紅黑 #1A0000\"\n  secondary: \"象牙白 #FFFFF0\"\n  accent: \"競爭紅 #CC0000\"\ntexture:\n  - 透視棋盤格局 (opacity: 0.22)\n  - 棋子剪影輪廓 (opacity: 0.18)\n  - 策略移動箭頭 (opacity: 0.14)\nlighting: 中央聚光燈打亮對弈核心\nmood: 策略、博弈、競爭謀略\nratio: 16:9\nresolution: 8K" }
+  ]},
+  { cat:"醫療專業系", icon:"🏥", styles:[
+    { name:"專業醫療風格", colors:["#F0F8FF","#2A7AE2","#A8D8C8"], desc:"冷白＋醫療藍，DNA線稿心電圖，潔淨專業",
+      nat:"生成高品質抽象背景海報，使用冷白與醫療藍漸層，融入 DNA 雙螺旋細線稿、心電圖波形曲線與六角分子結構網格，添加頂部均勻冷白燈箱漫射光，整體潔淨無雜訊，呈現精準可信醫療專業美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 專業醫療風格\ncolors:\n  primary: \"冷白 #F0F8FF\"\n  secondary: \"醫療藍 #2A7AE2\"\n  accent: \"薄荷綠 #A8D8C8\"\ntexture:\n  - DNA 雙螺旋細線稿 (opacity: 0.12)\n  - 心電圖波形曲線 (opacity: 0.10)\n  - 六角分子結構網格 (opacity: 0.08)\nlighting: 頂部均勻冷白燈箱漫射\nmood: 精準、潔淨、專業信賴\nratio: 16:9\nresolution: 8K" },
+    { name:"解剖寫實風", colors:["#FAF3E0","#8B5E3C","#C9A87C"], desc:"米白＋暖膚棕，解剖線稿器官輪廓，學術教學",
+      nat:"生成高品質抽象背景海報，使用米白與暖膚棕漸層，融入醫學解剖教科書風格細膩線稿輪廓、器官與骨骼剪影圖示與標注引線細線條，添加均勻自然醫學燈箱漫射光，整體呈現醫學學術解剖教學美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 解剖寫實風\ncolors:\n  primary: \"米白 #FAF3E0\"\n  secondary: \"暖膚棕 #8B5E3C\"\n  accent: \"解剖黃褐 #C9A87C\"\ntexture:\n  - 醫學解剖線稿輪廓 (opacity: 0.14)\n  - 器官骨骼剪影圖示 (opacity: 0.10)\n  - 標注引線細線條 (opacity: 0.08)\nlighting: 均勻自然醫學燈箱漫射\nmood: 精密、學術、教學性\nratio: 16:9\nresolution: 8K" },
+    { name:"衛教宣導風", colors:["#FFF8F0","#F97316","#4ADE80"], desc:"奶白＋活力橘＋健康綠，圓潤圖示，親切易懂",
+      nat:"生成高品質抽象背景海報，使用奶白與活力橘及健康綠漸層，融入圓潤健康生活圖示輪廓、友善資訊圖表框架與柔和彩色圓點散落，添加中央柔和暖白光暈向外擴散，整體呈現親切易懂健康促進衛教宣導美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 衛教宣導風\ncolors:\n  primary: \"奶白 #FFF8F0\"\n  secondary: \"活力橘 #F97316\"\n  accent: \"健康綠 #4ADE80\"\ntexture:\n  - 圓潤健康圖示輪廓 (opacity: 0.16)\n  - 資訊圖表框架 (opacity: 0.12)\n  - 彩色圓點散落 (opacity: 0.10)\nlighting: 中央柔和暖白光暈擴散\nmood: 親切、易懂、健康積極\nratio: 16:9\nresolution: 8K" },
+    { name:"專業報告風", colors:["#0F2137","#E8EEF4","#4A90B8"], desc:"深海軍藍＋冷白，數據圖表格線，嚴謹學術",
+      nat:"生成高品質抽象背景海報，使用深海軍藍與冷白漸層，融入數據折線圖框架、統計長條輪廓與精細表格格線，添加頂部均勻冷白辦公燈光漫射，整體呈現嚴謹數據導向醫學專業報告學術美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 專業報告風\ncolors:\n  primary: \"深海軍藍 #0F2137\"\n  secondary: \"冷白 #E8EEF4\"\n  accent: \"數據藍 #4A90B8\"\ntexture:\n  - 數據折線圖框架 (opacity: 0.14)\n  - 統計長條輪廓 (opacity: 0.10)\n  - 精細表格格線 (opacity: 0.12)\nlighting: 頂部均勻冷白辦公燈光\nmood: 嚴謹、數據導向、學術報告\nratio: 16:9\nresolution: 8K" },
+    { name:"手術室科技風", colors:["#001A12","#00C896","#AEFDE8"], desc:"深手術綠＋螢光翠，監控波形，無菌科技感",
+      nat:"生成高品質抽象背景海報，使用深手術綠與螢光翠漸層，融入生命監控螢幕波形曲線、無菌燈圓形光暈輪廓與精密手術儀器線框圖示，添加頂部手術無影燈環形強光向下照射，整體呈現高科技手術室臨床精密美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 手術室科技風\ncolors:\n  primary: \"深手術綠 #001A12\"\n  secondary: \"螢光翠 #00C896\"\n  accent: \"監控淡綠 #AEFDE8\"\ntexture:\n  - 生命監控波形曲線 (opacity: 0.22)\n  - 無菌燈圓形光暈 (opacity: 0.15)\n  - 手術儀器線框圖示 (opacity: 0.12)\nlighting: 頂部手術無影燈環形強光\nmood: 高精密、無菌、臨床科技\nratio: 16:9\nresolution: 8K" }
+  ]},
+  { cat:"插畫漫畫系", icon:"🎨", styles:[
+    { name:"日式漫畫風格", colors:["#FFFFFF","#1A1A1A","#BDBDBD"], desc:"純白＋墨線黑，漫畫網點速度線，動態敘事",
+      nat:"生成高品質抽象背景海報，使用純白與墨線黑漸層，融入日式漫畫網點半調點陣紋理、速度線放射線條與對話框輪廓，添加左側集中線放射光源效果，呈現黑白日式少年漫畫動態敘事美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 日式漫畫風格\ncolors:\n  primary: \"純白 #FFFFFF\"\n  secondary: \"墨線黑 #1A1A1A\"\n  accent: \"網點灰 #BDBDBD\"\ntexture:\n  - 漫畫網點半調點陣 (opacity: 0.25)\n  - 速度線放射線條 (opacity: 0.18)\n  - 對話框輪廓 (opacity: 0.10)\nlighting: 左側集中線放射光源\nmood: 動態、敘事、臨場感\nratio: 16:9\nresolution: 8K" },
+    { name:"美式漫畫風格", colors:["#1C3F9B","#D92B2B","#F5C518"], desc:"英雄藍＋紅＋黃，Ben-Day點陣爆炸框，爆發活力",
+      nat:"生成高品質抽象背景海報，使用美國隊藍與英雄紅大膽漸層，融入 Ben-Day 普普風點陣色塊、粗黑邊框幾何分割線與動作爆炸形狀輪廓，添加正面強烈硬光製造高反差效果，呈現美式英雄漫畫爆發活力美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 美式漫畫風格\ncolors:\n  primary: \"美國隊藍 #1C3F9B\"\n  secondary: \"英雄紅 #D92B2B\"\n  accent: \"陽光黃 #F5C518\"\ntexture:\n  - Ben-Day 普普風點陣色塊 (opacity: 0.30)\n  - 粗黑邊框幾何分割線 (opacity: 0.20)\n  - 爆炸動作形狀輪廓 (opacity: 0.15)\nlighting: 正面強烈硬光高反差\nmood: 爆發、英雄、強烈活力\nratio: 16:9\nresolution: 8K" },
+    { name:"童書插畫風", colors:["#FFFDE7","#64B5F6","#81C784"], desc:"奶油黃＋天空藍＋草地綠，手繪卡通，天真歡樂",
+      nat:"生成高品質抽象背景海報，使用奶油黃與天空藍漸層，融入圓潤手繪卡通雲朵輪廓、彩色星星與愛心散落圖案及簡單花草點綴，添加頂部柔和溫暖自然光均勻漫射，整體呈現兒童繪本溫暖天真快樂插畫美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 童書插畫風\ncolors:\n  primary: \"奶油黃 #FFFDE7\"\n  secondary: \"天空藍 #64B5F6\"\n  accent: \"草地綠 #81C784\"\ntexture:\n  - 手繪卡通雲朵輪廓 (opacity: 0.20)\n  - 彩色星星愛心散落 (opacity: 0.15)\n  - 簡單花草點綴 (opacity: 0.12)\nlighting: 頂部柔和溫暖自然光\nmood: 天真、溫暖、歡樂\nratio: 16:9\nresolution: 8K" },
+    { name:"蠟筆筆觸風", colors:["#FDFAF0","#FF6B6B","#FFD93D"], desc:"米白紙面＋蠟筆紅黃，粗粒筆觸，手作童趣",
+      nat:"生成高品質抽象背景海報，使用米白紙面底色與蠟筆紅黃漸層，融入蠟筆粗粒顆粒紋理筆觸、不規則手繪色塊輪廓與蠟筆交叉線條填色效果，添加均勻自然紙面側光，整體呈現手工蠟筆繪本溫暖童趣美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 蠟筆筆觸風\ncolors:\n  primary: \"米白紙面 #FDFAF0\"\n  secondary: \"蠟筆紅 #FF6B6B\"\n  accent: \"蠟筆黃 #FFD93D\"\ntexture:\n  - 蠟筆粗粒顆粒紋理 (opacity: 0.30)\n  - 不規則手繪色塊輪廓 (opacity: 0.20)\n  - 蠟筆交叉線條填色 (opacity: 0.15)\nlighting: 均勻自然紙面側光\nmood: 手作感、童趣、溫暖\nratio: 16:9\nresolution: 8K" },
+    { name:"可愛動物風", colors:["#FFF0F5","#FFB7C5","#A8E6CF"], desc:"奶白＋蜜桃粉＋薄荷綠，動物圖示腳印，萌趣療癒",
+      nat:"生成高品質抽象背景海報，使用奶白與蜜桃粉漸層，融入圓潤可愛動物臉部輪廓圖示、柔和腳印圖案散落與毛絨質感圓點紋理，添加柔和粉白頂光均勻漫射，整體呈現萌趣療癒可愛動物插畫美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
+      yaml:"style: 可愛動物風\ncolors:\n  primary: \"奶白 #FFF0F5\"\n  secondary: \"蜜桃粉 #FFB7C5\"\n  accent: \"薄荷綠 #A8E6CF\"\ntexture:\n  - 可愛動物臉部輪廓 (opacity: 0.18)\n  - 柔和腳印圖案散落 (opacity: 0.14)\n  - 毛絨質感圓點紋理 (opacity: 0.10)\nlighting: 柔和粉白頂光均勻漫射\nmood: 萌趣、療癒、可愛\nratio: 16:9\nresolution: 8K" }
   ]}
 ];
 
@@ -748,9 +789,17 @@ function switchPage(id, btn) {
   btn.classList.add('active');
 }
 
+const INFO_STYLE_IMG = { flat:0, clay:1, semi:2, watercolor:3, iso:4, '2.5d':5 };
+
 function selInfo(groupId, btn) {
   document.querySelectorAll('#' + groupId + ' .info-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  if (groupId === 'i-style') {
+    const idx = INFO_STYLE_IMG[btn.dataset.v] ?? 0;
+    const img = document.getElementById('info-style-img');
+    if (img) { img.src = 'images/info-' + idx + '.jpg'; img.alt = btn.textContent + ' 範例'; }
+    document.getElementById('info-style-preview').style.display = 'block';
+  }
   generateInfo();
 }
 

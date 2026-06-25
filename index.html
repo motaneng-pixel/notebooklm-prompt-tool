@@ -87,16 +87,27 @@ input[type=text]::placeholder, textarea::placeholder { color: #334155; }
 .info-btn:hover { border-color: #60a5fa; color: #60a5fa; }
 .info-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; font-weight: 600; }
 /* ── Lightbox ── */
-#lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:9999; align-items:center; justify-content:center; cursor:zoom-out; }
-#lightbox.open { display:flex; flex-direction:column; gap:10px; }
-#lightbox img { max-width:90vw; max-height:82vh; border-radius:10px; box-shadow:0 8px 40px rgba(0,0,0,0.6); }
+#lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:9999; align-items:center; justify-content:center; flex-direction:column; gap:10px; overflow:hidden; }
+#lightbox.open { display:flex; }
+#lightbox-img-wrap { position:relative; display:flex; align-items:center; justify-content:center; }
+#lightbox img { max-width:90vw; max-height:82vh; border-radius:10px; box-shadow:0 8px 40px rgba(0,0,0,0.6); transform-origin:center center; transition:transform 0.1s; cursor:grab; user-select:none; }
+#lightbox img.dragging { cursor:grabbing; transition:none; }
 #lightbox-cap { color:#94a3b8; font-size:0.82rem; }
+#lightbox-zoom-hint { color:#64748b; font-size:0.72rem; }
+#lightbox-close { position:fixed; top:16px; right:20px; color:#94a3b8; font-size:1.6rem; cursor:pointer; z-index:10000; line-height:1; }
+#lightbox-close:hover { color:#e2e8f0; }
+#lightbox-zoom-level { position:fixed; top:16px; left:20px; color:#94a3b8; font-size:0.75rem; background:rgba(0,0,0,0.5); padding:3px 8px; border-radius:4px; }
 </style>
 </head>
 <body>
-<div id="lightbox" onclick="closeLightbox()">
-  <img id="lightbox-img" src="" alt="">
+<div id="lightbox">
+  <div id="lightbox-close" onclick="closeLightbox()">✕</div>
+  <div id="lightbox-zoom-level">100%</div>
+  <div id="lightbox-img-wrap">
+    <img id="lightbox-img" src="" alt="">
+  </div>
   <div id="lightbox-cap"></div>
+  <div id="lightbox-zoom-hint">滾輪縮放・拖曳平移・雙擊重設・點外框關閉</div>
 </div>
 
 <div class="header">
@@ -691,14 +702,61 @@ function doCopy() {
   });
 }
 
+// ── Lightbox with zoom & pan ──
+let lbScale = 1, lbTx = 0, lbTy = 0, lbDragging = false, lbLastX = 0, lbLastY = 0;
+
+function lbApply() {
+  const img = document.getElementById('lightbox-img');
+  img.style.transform = `translate(${lbTx}px,${lbTy}px) scale(${lbScale})`;
+  document.getElementById('lightbox-zoom-level').textContent = Math.round(lbScale * 100) + '%';
+}
+function lbReset() { lbScale = 1; lbTx = 0; lbTy = 0; lbApply(); }
+
 function openLightbox(src, cap) {
   document.getElementById('lightbox-img').src = src;
   document.getElementById('lightbox-cap').textContent = cap;
   document.getElementById('lightbox').classList.add('open');
+  lbReset();
 }
 function closeLightbox() {
   document.getElementById('lightbox').classList.remove('open');
+  lbReset();
 }
+
+// 點背景關閉（不點到圖片）
+document.getElementById('lightbox').addEventListener('click', function(e) {
+  if (e.target === this || e.target.id === 'lightbox-cap' || e.target.id === 'lightbox-zoom-hint') closeLightbox();
+});
+
+// 滾輪縮放
+document.getElementById('lightbox').addEventListener('wheel', function(e) {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.85 : 1.18;
+  lbScale = Math.min(Math.max(lbScale * delta, 0.5), 8);
+  lbApply();
+}, { passive: false });
+
+// 雙擊重設
+document.getElementById('lightbox-img').addEventListener('dblclick', lbReset);
+
+// 拖曳平移
+const lbImg = document.getElementById('lightbox-img');
+lbImg.addEventListener('mousedown', function(e) {
+  if (lbScale <= 1) return;
+  lbDragging = true; lbLastX = e.clientX; lbLastY = e.clientY;
+  lbImg.classList.add('dragging');
+  e.preventDefault();
+});
+document.addEventListener('mousemove', function(e) {
+  if (!lbDragging) return;
+  lbTx += e.clientX - lbLastX; lbTy += e.clientY - lbLastY;
+  lbLastX = e.clientX; lbLastY = e.clientY;
+  lbApply();
+});
+document.addEventListener('mouseup', function() {
+  lbDragging = false; lbImg.classList.remove('dragging');
+});
+
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeLightbox(); });
 
 renderCats(); renderStyles();

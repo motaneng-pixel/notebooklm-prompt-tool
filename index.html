@@ -87,6 +87,19 @@ input[type=text]::placeholder, textarea::placeholder { color: #334155; }
 .info-btn:hover { border-color: #60a5fa; color: #60a5fa; }
 .info-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; font-weight: 600; }
 /* ── Lightbox ── */
+/* ── 大綱分頁專用 ── */
+.ol-sel { width:100%;padding:7px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:.83rem;box-sizing:border-box;cursor:pointer; }
+.ol-sel:focus { outline:none;border-color:#3b82f6; }
+.ol-sel::placeholder { color:#475569; }
+select.ol-sel { appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-color:#0f172a; }
+input.ol-sel { cursor:text; }
+.ol-item { display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;border:1px solid transparent;cursor:pointer;color:#64748b;font-size:.8rem;transition:all .15s;margin-bottom:3px;user-select:none; }
+.ol-item:hover { background:#1e293b;color:#94a3b8; }
+.ol-item.active { background:#1e293b;border-color:#7c3aed;color:#e2e8f0; }
+.ol-item-icon { font-size:.85rem;width:16px;text-align:center;flex-shrink:0; }
+.ol-rec { font-size:.62rem;background:#7c3aed;color:#fff;padding:1px 6px;border-radius:3px;margin-left:auto;flex-shrink:0; }
+.ol-item-desc { font-size:.72rem;color:#475569;margin-top:2px;line-height:1.3; }
+.ol-item.active .ol-item-desc { color:#64748b; }
 #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:9999; align-items:center; justify-content:center; flex-direction:column; gap:10px; overflow:hidden; }
 #lightbox.open { display:flex; }
 #lightbox-img-wrap { position:relative; display:flex; align-items:center; justify-content:center; }
@@ -121,6 +134,7 @@ input[type=text]::placeholder, textarea::placeholder { color: #334155; }
 <div class="page-tab-bar">
   <button class="page-tab active" onclick="switchPage('bg',this)">📋 簡報背景提示詞</button>
   <button class="page-tab" onclick="switchPage('info',this)">🏥 衛教圖表提示詞</button>
+  <button class="page-tab" onclick="switchPage('outline',this)">📝 簡報大綱整理</button>
 </div>
 
 <div class="main-panels">
@@ -171,6 +185,20 @@ input[type=text]::placeholder, textarea::placeholder { color: #334155; }
             <button class="info-btn" onclick="selBgOpt('bg-audience',this)" data-v="目標受眾：學生。使用淺顯易懂的邏輯與教育引導。">學生</button>
             <button class="info-btn" onclick="selBgOpt('bg-audience',this)" data-v="目標受眾：社群媒體讀者。強調視覺衝擊與短平快的資訊點。">社群媒體</button>
             <button class="info-btn" onclick="selBgOpt('bg-audience',this)" data-v="目標受眾：投資人。側重市場潛力、商業模式與風險分析。">投資人</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>導覽角色 <span class="tag">選配</span></label>
+          <div class="info-sel" id="bg-char-type">
+            <button class="info-btn active" onclick="selChar('bg-char-type',this)" data-v="">無</button>
+            <button class="info-btn" onclick="selChar('bg-char-type',this)" data-v="醫護人員">醫護人員</button>
+            <button class="info-btn" onclick="selChar('bg-char-type',this)" data-v="老師講師">老師講師</button>
+            <button class="info-btn" onclick="selChar('bg-char-type',this)" data-v="卡通動物">卡通動物</button>
+            <button class="info-btn" onclick="selChar('bg-char-type',this)" data-v="機器人AI">機器人 AI</button>
+            <button class="info-btn" onclick="selChar('bg-char-type',this)" data-v="小精靈">小精靈</button>
+          </div>
+          <div id="bg-char-hint" style="display:none;margin-top:6px;font-size:0.72rem;color:#475569;line-height:1.5">
+            角色位置與姿態將由 AI 依每頁內容自動配置
           </div>
         </div>
       </div>
@@ -240,6 +268,20 @@ input[type=text]::placeholder, textarea::placeholder { color: #334155; }
           </div>
         </div>
         <div class="field">
+          <label>導覽角色 <span class="tag">選配</span></label>
+          <div class="info-sel" id="i-char-type">
+            <button class="info-btn active" onclick="selChar('i-char-type',this)" data-v="">無</button>
+            <button class="info-btn" onclick="selChar('i-char-type',this)" data-v="醫護人員">醫護人員</button>
+            <button class="info-btn" onclick="selChar('i-char-type',this)" data-v="老師講師">老師講師</button>
+            <button class="info-btn" onclick="selChar('i-char-type',this)" data-v="卡通動物">卡通動物</button>
+            <button class="info-btn" onclick="selChar('i-char-type',this)" data-v="機器人AI">機器人 AI</button>
+            <button class="info-btn" onclick="selChar('i-char-type',this)" data-v="小精靈">小精靈</button>
+          </div>
+          <div id="i-char-hint" style="display:none;margin-top:6px;font-size:0.72rem;color:#475569;line-height:1.5">
+            角色位置與姿態將由 AI 依每頁內容自動配置
+          </div>
+        </div>
+        <div class="field">
           <label>分段生成 <span class="tag">長文件拆成多張圖</span></label>
           <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:.82rem;color:#94a3b8;margin-top:4px">
             <input type="checkbox" id="i-batch" onchange="toggleBatch()" style="accent-color:#3b82f6;width:14px;height:14px">
@@ -273,6 +315,205 @@ input[type=text]::placeholder, textarea::placeholder { color: #334155; }
 
     </div><!-- #panel-info -->
 
+    <!-- ── 簡報大綱整理 ── -->
+    <div id="panel-outline" style="display:none;flex-direction:column;gap:12px">
+
+      <!-- Card 1: 基本設定 -->
+      <div class="card">
+        <div class="card-title"><span class="badge">1</span>簡報基本設定</div>
+        <div class="field" style="margin-bottom:10px">
+          <label>簡報主題</label>
+          <input type="text" id="ol-topic" placeholder="例：2025年 AI 工具應用於醫療教育的現況與展望" oninput="generateOutline()">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <div style="font-size:0.72rem;color:#64748b;margin-bottom:4px">預計簡報頁數（張）</div>
+            <input type="number" id="ol-slides" min="3" max="50" value="12" oninput="generateOutline()"
+              style="width:100%;padding:7px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:.83rem">
+          </div>
+          <div>
+            <div style="font-size:0.72rem;color:#64748b;margin-bottom:4px">預計報告時間（分鐘）</div>
+            <input type="number" id="ol-duration" min="1" max="120" value="15" oninput="generateOutline()"
+              style="width:100%;padding:7px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:.83rem">
+          </div>
+          <div>
+            <div style="font-size:0.72rem;color:#64748b;margin-bottom:4px">簡報角色</div>
+            <select id="ol-role" onchange="onOLSel(this)" class="ol-sel">
+              <option value="主講者">主講者</option>
+              <option value="主持人">主持人</option>
+              <option value="教師／培訓師">教師／培訓師</option>
+              <option value="業務銷售人員">業務銷售人員</option>
+              <option value="醫療衛教人員">醫療衛教人員</option>
+              <option value="不需要角色">不需要角色</option>
+              <option value="__custom__">✎ 自訂…</option>
+            </select>
+            <input type="text" id="ol-role-custom" style="display:none;margin-top:5px" class="ol-sel" placeholder="輸入自訂角色…" oninput="generateOutline()">
+          </div>
+          <div>
+            <div style="font-size:0.72rem;color:#64748b;margin-bottom:4px">簡報發表場景</div>
+            <select id="ol-scene" onchange="onOLSel(this)" class="ol-sel">
+              <option value="現場提案會議">現場提案會議</option>
+              <option value="線上視訊會議">線上視訊會議</option>
+              <option value="課堂教學">課堂教學</option>
+              <option value="學術研討會">學術研討會</option>
+              <option value="展覽攤位">展覽攤位</option>
+              <option value="社群媒體分享">社群媒體分享</option>
+              <option value="自學閱讀用">自學閱讀用</option>
+              <option value="__custom__">✎ 自訂…</option>
+            </select>
+            <input type="text" id="ol-scene-custom" style="display:none;margin-top:5px" class="ol-sel" placeholder="輸入自訂場景…" oninput="generateOutline()">
+          </div>
+          <div>
+            <div style="font-size:0.72rem;color:#64748b;margin-bottom:4px">目標受眾</div>
+            <select id="ol-audience" onchange="onOLSel(this)" class="ol-sel">
+              <option value="潛在客戶與決策者">潛在客戶與決策者</option>
+              <option value="公司內部團隊">公司內部團隊</option>
+              <option value="一般大眾">一般大眾</option>
+              <option value="學生">學生</option>
+              <option value="醫療專業人員">醫療專業人員</option>
+              <option value="管理階層主管">管理階層主管</option>
+              <option value="投資人">投資人</option>
+              <option value="家長與照顧者">家長與照顧者</option>
+              <option value="__custom__">✎ 自訂…</option>
+            </select>
+            <input type="text" id="ol-audience-custom" style="display:none;margin-top:5px" class="ol-sel" placeholder="輸入自訂受眾…" oninput="generateOutline()">
+          </div>
+          <div>
+            <div style="font-size:0.72rem;color:#64748b;margin-bottom:4px">講者語氣與人設</div>
+            <select id="ol-tone" onchange="onOLSel(this)" class="ol-sel">
+              <option value="專業自信且具說服力">專業自信且具說服力</option>
+              <option value="親切友善易理解">親切友善易理解</option>
+              <option value="數據導向客觀">數據導向客觀</option>
+              <option value="嚴謹學術">嚴謹學術</option>
+              <option value="幽默活潑">幽默活潑</option>
+              <option value="溫暖同理有感染力">溫暖同理有感染力</option>
+              <option value="__custom__">✎ 自訂…</option>
+            </select>
+            <input type="text" id="ol-tone-custom" style="display:none;margin-top:5px" class="ol-sel" placeholder="輸入自訂語氣…" oninput="generateOutline()">
+          </div>
+          <div>
+            <div style="font-size:0.72rem;color:#64748b;margin-bottom:4px">核心行動呼籲（CTA）</div>
+            <select id="ol-cta" onchange="onOLSel(this)" class="ol-sel">
+              <option value="學習並應用新知識">學習並應用新知識</option>
+              <option value="了解痛點並促成合作">了解痛點並促成合作</option>
+              <option value="改變行為或觀念">改變行為或觀念</option>
+              <option value="購買或訂閱產品服務">購買或訂閱產品服務</option>
+              <option value="批准預算或資源">批准預算或資源</option>
+              <option value="分享傳播內容">分享傳播內容</option>
+              <option value="預約諮詢或掛號">預約諮詢或掛號</option>
+              <option value="不需要行動呼籲">不需要行動呼籲</option>
+              <option value="__custom__">✎ 自訂…</option>
+            </select>
+            <input type="text" id="ol-cta-custom" style="display:none;margin-top:5px" class="ol-sel" placeholder="輸入自訂 CTA…" oninput="generateOutline()">
+          </div>
+          <div>
+            <div style="font-size:0.72rem;color:#64748b;margin-bottom:4px">每張重點數</div>
+            <select id="ol-points" onchange="generateOutline()" class="ol-sel">
+              <option value="2">2 個重點</option>
+              <option value="3" selected>3 個重點</option>
+              <option value="4">4 個重點</option>
+              <option value="5">5 個重點</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:0.72rem;color:#64748b;margin-bottom:4px">重點呈現方式</div>
+            <select id="ol-detail" onchange="generateOutline()" class="ol-sel">
+              <option value="brief">簡潔條列</option>
+              <option value="explain" selected>條列＋說明</option>
+              <option value="example">條列＋範例</option>
+              <option value="full">完整展開</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cards 2 & 3 並排 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start">
+
+        <!-- Card 2: 簡報目的 -->
+        <div class="card" style="margin:0">
+          <div class="card-title"><span class="badge">2</span>簡報目的 / 類型</div>
+          <div id="ol-purpose-list">
+            <div class="ol-item active" onclick="selOLItem('ol-purpose-list',this)" data-v="商業提案（Pitch Deck）">
+              <span class="ol-item-icon">✦</span>商業提案（Pitch Deck）
+            </div>
+            <div class="ol-item" onclick="selOLItem('ol-purpose-list',this)" data-v="教育與員工培訓">
+              <span class="ol-item-icon">□</span>教育與員工培訓
+            </div>
+            <div class="ol-item" onclick="selOLItem('ol-purpose-list',this)" data-v="專案與進度報告">
+              <span class="ol-item-icon">◷</span>專案與進度報告
+            </div>
+            <div class="ol-item" onclick="selOLItem('ol-purpose-list',this)" data-v="產品發表會">
+              <span class="ol-item-icon">◈</span>產品發表會
+            </div>
+            <div class="ol-item" onclick="selOLItem('ol-purpose-list',this)" data-v="數據與成效分析">
+              <span class="ol-item-icon">▦</span>數據與成效分析
+            </div>
+            <div class="ol-item" onclick="selOLItem('ol-purpose-list',this)" data-v="行銷企劃與發想">
+              <span class="ol-item-icon">◎</span>行銷企劃與發想
+            </div>
+            <div class="ol-item" onclick="selOLItem('ol-purpose-list',this)" data-v="醫療衛教宣導">
+              <span class="ol-item-icon">✚</span>醫療衛教宣導
+            </div>
+            <div class="ol-item ol-item-custom" onclick="selOLItem('ol-purpose-list',this)" data-v="__custom__">
+              <span class="ol-item-icon">✎</span>自訂簡報目的
+            </div>
+          </div>
+          <input type="text" id="ol-purpose-custom" placeholder="輸入自訂目的…"
+            style="display:none;margin-top:6px;width:100%;padding:6px 8px;background:#0f172a;border:1px solid #475569;border-radius:6px;color:#e2e8f0;font-size:.8rem"
+            oninput="generateOutline()">
+        </div>
+
+        <!-- Card 3: 大綱架構 -->
+        <div class="card" style="margin:0">
+          <div class="card-title"><span class="badge">3</span>簡報大綱架構</div>
+          <div id="ol-struct-list">
+            <div class="ol-item" onclick="selOLItem('ol-struct-list',this)" data-v="problem-solution">
+              <div>
+                <div style="color:inherit;font-size:.82rem">⊕ 問題與解決方案</div>
+                <div class="ol-item-desc">先說痛點，再提解法，最後呈現成效</div>
+              </div>
+            </div>
+            <div class="ol-item" onclick="selOLItem('ol-struct-list',this)" data-v="story">
+              <div>
+                <div style="color:inherit;font-size:.82rem">◇ 起承轉合（故事法）</div>
+                <div class="ol-item-desc">用故事帶入情境，製造轉折，收尾有力</div>
+              </div>
+            </div>
+            <div class="ol-item" onclick="selOLItem('ol-struct-list',this)" data-v="timeline">
+              <div>
+                <div style="color:inherit;font-size:.82rem">◷ 時間軸演進</div>
+                <div class="ol-item-desc">從過去講到現在再到未來，呈現發展脈絡</div>
+              </div>
+            </div>
+            <div class="ol-item active" onclick="selOLItem('ol-struct-list',this)" data-v="scqa">
+              <div>
+                <div style="color:inherit;font-size:.82rem">□ 金字塔原則（SCQA）</div>
+                <div class="ol-item-desc">先說情境，再點問題，然後給出答案與行動</div>
+              </div>
+            </div>
+            <div class="ol-item" onclick="selOLItem('ol-struct-list',this)" data-v="conclusion-first">
+              <div>
+                <div style="color:inherit;font-size:.82rem">▦ 結論與數據先行</div>
+                <div class="ol-item-desc">先亮結論和數字，再補充論述，適合決策者</div>
+              </div>
+            </div>
+            <div class="ol-item ol-item-custom" onclick="selOLItem('ol-struct-list',this)" data-v="__custom__">
+              <div>
+                <div style="color:inherit;font-size:.82rem">✎ 自訂大綱架構</div>
+                <div class="ol-item-desc">自行輸入架構說明</div>
+              </div>
+            </div>
+          </div>
+          <input type="text" id="ol-struct-custom" placeholder="輸入自訂架構說明…"
+            style="display:none;margin-top:6px;width:100%;padding:6px 8px;background:#0f172a;border:1px solid #475569;border-radius:6px;color:#e2e8f0;font-size:.8rem"
+            oninput="generateOutline()">
+        </div>
+
+      </div><!-- grid 2&3 -->
+
+    </div><!-- #panel-outline -->
+
   </div><!-- #left-panel -->
 
   <!-- ── 拖曳分隔線 ── -->
@@ -302,6 +543,15 @@ input[type=text]::placeholder, textarea::placeholder { color: #334155; }
       </div>
       <div class="output-full empty" id="info-output">設定規格後即時生成提示詞</div>
       <p class="rp-hint">提示詞可貼入 ChatGPT / DALL-E / Midjourney 生成衛教資訊圖表；或貼入 Canva AI 圖像生成功能</p>
+    </div>
+
+    <div id="rp-outline" style="display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0">
+      <div class="rp-header">
+        <span style="font-size:0.83rem;color:#60a5fa;font-weight:600;letter-spacing:0.02em">大綱整理提示詞輸出</span>
+        <button class="rp-copy-btn" id="outlineCopyBtn" onclick="doOutlineCopy()">複製</button>
+      </div>
+      <div class="output-full" id="outline-output"></div>
+      <p class="rp-hint">將提示詞貼入 NotebookLM 對話框，AI 會根據知識庫資料整理出符合大綱的簡報內容</p>
     </div>
 
   </div><!-- #right-panel -->
@@ -371,10 +621,7 @@ const DATA = [
       yaml:"style: 水彩人文藝術風\ncolors:\n  primary: \"溫白 #FFF5EE\"\n  secondary: \"粉紅水彩 #FFB7C5\"\n  accent: \"天藍水彩 #B7E0FF\"\ntexture:\n  - 水彩洗染紋理 (opacity: 0.30)\n  - 色塊疊加層次 (opacity: 0.22)\n  - 顏料流動邊緣 (opacity: 0.18)\nlighting: 頂部自然柔和散光\nmood: 人文、溫暖、藝術\nratio: 16:9\nresolution: 8K" },
     { name:"Lo-fi 復古計畫風", colors:["#2C1810","#D4956A","#F0C89E"], desc:"深棕＋復古橘米，底紋顆粒，Lo-fi手感",
       nat:"生成高品質抽象背景海報，使用深棕與復古橘米漸層，融入仿舊膠卷顆粒噪點紋理、復古方格筆記本底紋與磁帶錄音波形圖案，添加暖黃舊燈泡側光，整體帶有歲月溫度，呈現 Lo-fi 復古氣息的手感計畫美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
-      yaml:"style: Lo-fi 復古計畫風\ncolors:\n  primary: \"深棕 #2C1810\"\n  secondary: \"復古橘米 #D4956A\"\n  accent: \"奶油米白 #F0C89E\"\ntexture:\n  - 仿舊膠卷顆粒噪點 (opacity: 0.25)\n  - 方格筆記本底紋 (opacity: 0.15)\n  - 磁帶波形圖案 (opacity: 0.12)\nlighting: 暖黃舊燈泡柔和側光\nmood: 復古、手感、Lo-fi溫度\nratio: 16:9\nresolution: 8K" },
-    { name:"Mesh 漸層行銷風", colors:["#FF6B6B","#4ECDC4","#45B7D1"], desc:"多彩Mesh漸層，流體色塊融合，現代品牌",
-      nat:"生成高品質抽象背景海報，使用多彩 Mesh 網格漸層（珊瑚紅、青綠、天藍）流暢融合，融入有機流體色塊自然過渡、Mesh 光影柔焦疊加與漸層邊緣自然暈散，整體色彩豐富流動，添加中央漸層高光，呈現現代品牌行銷 Mesh 視覺美學，8K 解析度，16:9 比例，確保背景不干擾前景資訊閱讀。",
-      yaml:"style: Mesh 漸層行銷風\ncolors:\n  primary: \"珊瑚紅 #FF6B6B\"\n  secondary: \"青綠 #4ECDC4\"\n  accent: \"天藍 #45B7D1\"\n  accent_colors:\n    - \"薰衣草 #A29BFE\"\ntexture:\n  - 有機流體色塊過渡 (opacity: 0.40)\n  - Mesh光影柔焦疊加 (opacity: 0.30)\n  - 漸層邊緣暈散 (opacity: 0.20)\nlighting: 中央漸層核心高光\nmood: 現代、流動、品牌感\nratio: 16:9\nresolution: 8K" }
+      yaml:"style: Lo-fi 復古計畫風\ncolors:\n  primary: \"深棕 #2C1810\"\n  secondary: \"復古橘米 #D4956A\"\n  accent: \"奶油米白 #F0C89E\"\ntexture:\n  - 仿舊膠卷顆粒噪點 (opacity: 0.25)\n  - 方格筆記本底紋 (opacity: 0.15)\n  - 磁帶波形圖案 (opacity: 0.12)\nlighting: 暖黃舊燈泡柔和側光\nmood: 復古、手感、Lo-fi溫度\nratio: 16:9\nresolution: 8K" }
   ]},
   { cat:"科技資訊系", icon:"🔵", styles:[
     { name:"數位行事曆科技風", colors:["#1E1B4B","#3B82F6","#BFDBFE"], desc:"深靛藍＋電子藍，行事曆格線，數位感",
@@ -684,6 +931,8 @@ function generate() {
   if(f) parts.push(`【格式要求 Format】\n${f}`);
   if(tone) parts.push(`【溝通語氣】\n${tone}`);
   if(audience) parts.push(`【目標受眾】\n${audience}`);
+  const bgChar = buildCharPrompt('bg-char-type');
+  if(bgChar) parts.push(`【導覽角色】\n${bgChar}`);
   parts.push(`【視覺風格指令】\n${styleBlock}`);
   box.className='output-full';
   box.textContent = parts.join('\n\n');
@@ -836,15 +1085,148 @@ function updateBatchCalc() {
 }
 
 function switchPage(id, btn) {
-  document.getElementById('panel-bg').style.display   = id === 'bg'   ? 'flex' : 'none';
-  document.getElementById('panel-info').style.display = id === 'info' ? 'flex' : 'none';
-  document.getElementById('rp-bg').style.display      = id === 'bg'   ? 'flex' : 'none';
-  document.getElementById('rp-info').style.display    = id === 'info' ? 'flex' : 'none';
+  document.getElementById('panel-bg').style.display      = id === 'bg'      ? 'flex' : 'none';
+  document.getElementById('panel-info').style.display    = id === 'info'    ? 'flex' : 'none';
+  document.getElementById('panel-outline').style.display = id === 'outline' ? 'flex' : 'none';
+  document.getElementById('rp-bg').style.display         = id === 'bg'      ? 'flex' : 'none';
+  document.getElementById('rp-info').style.display       = id === 'info'    ? 'flex' : 'none';
+  document.getElementById('rp-outline').style.display    = id === 'outline' ? 'flex' : 'none';
   document.querySelectorAll('.page-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 }
 
+// ── 大綱整理分頁 ──
+function onOLSel(sel) {
+  const customEl = document.getElementById(sel.id + '-custom');
+  if (customEl) customEl.style.display = sel.value === '__custom__' ? 'block' : 'none';
+  generateOutline();
+}
+
+function getOLVal(selId) {
+  const sel = document.getElementById(selId);
+  if (!sel) return '';
+  if (sel.value === '__custom__') {
+    const c = document.getElementById(selId + '-custom');
+    return (c?.value || '').trim();
+  }
+  return sel.value;
+}
+
+const OL_STRUCT_MAP = {
+  'problem-solution': '依「問題背景 → 影響與痛點 → 解決方案 → 預期成效」架構整理內容',
+  'story':            '依「起：背景故事 → 承：衝突發展 → 轉：關鍵轉折 → 合：結論收尾」敘事架構整理內容',
+  'timeline':         '依時間軸順序（過去現況 → 現在挑戰 → 未來展望）整理內容演進脈絡',
+  'scqa':             '依金字塔原則「S情境（Situation） → C複雜化（Complication） → Q核心問題（Question） → A答案與行動（Answer）」整理內容',
+  'conclusion-first': '採結論先行策略，先呈現核心論點與關鍵數據，再逐步展開支撐論述',
+};
+
+function selOLItem(listId, item) {
+  document.querySelectorAll('#' + listId + ' .ol-item').forEach(el => el.classList.remove('active'));
+  item.classList.add('active');
+  // 自訂輸入框顯示
+  const customInputId = listId === 'ol-purpose-list' ? 'ol-purpose-custom' : 'ol-struct-custom';
+  const customInput = document.getElementById(customInputId);
+  if (customInput) customInput.style.display = item.dataset.v === '__custom__' ? 'block' : 'none';
+  generateOutline();
+}
+
+function getOLItem(listId) {
+  const active = document.querySelector('#' + listId + ' .ol-item.active');
+  return active ? active.dataset.v : '';
+}
+
+function generateOutline() {
+  const box = document.getElementById('outline-output');
+  if (!box) return;
+  const topic    = (document.getElementById('ol-topic')?.value || '').trim() || '【請填入簡報主題】';
+
+  const slides   = document.getElementById('ol-slides')?.value || '12';
+  const duration = document.getElementById('ol-duration')?.value || '15';
+  const role     = getOLVal('ol-role');
+  const scene    = getOLVal('ol-scene');
+  const audience = getOLVal('ol-audience');
+  const tone     = getOLVal('ol-tone');
+  const cta      = getOLVal('ol-cta');
+
+  const purposeKey = getOLItem('ol-purpose-list');
+  const purpose = purposeKey === '__custom__'
+    ? (document.getElementById('ol-purpose-custom')?.value.trim() || '自訂目的')
+    : purposeKey;
+
+  const structKey = getOLItem('ol-struct-list');
+  const structDesc = structKey === '__custom__'
+    ? (document.getElementById('ol-struct-custom')?.value.trim() || '自訂架構')
+    : (OL_STRUCT_MAP[structKey] || '');
+
+  const structLabel = {
+    'problem-solution':'問題與解決方案架構',
+    'story':'起承轉合故事架構',
+    'timeline':'時間軸演進架構',
+    'scqa':'金字塔原則 SCQA 架構',
+    'conclusion-first':'結論與數據先行架構',
+    '__custom__':'自訂大綱架構',
+  }[structKey] || '大綱架構';
+
+  const pts = document.getElementById('ol-points')?.value || '3';
+  const d = document.getElementById('ol-detail')?.value || 'explain';
+  const fmtMap = {
+    brief:   `請幫我規劃共 ${slides} 張投影片的詳細章節。針對「每張投影片」，皆須包含：① 投影片單頁標題、② ${pts} 個重點條列（提煉自知識庫的核心觀念）。`,
+    explain: `請幫我規劃共 ${slides} 張投影片的詳細章節。針對「每張投影片」，皆須包含：① 投影片單頁標題、② ${pts} 個重點條列（提煉自知識庫的核心觀念）、③ 每個重點附一句說明，解釋其核心意義或原因。`,
+    example: `請幫我規劃共 ${slides} 張投影片的詳細章節。針對「每張投影片」，皆須包含：① 投影片單頁標題、② ${pts} 個核心重點列點（提煉自知識庫的重要觀念或操作步驟）、③ 具體實際用法範例。`,
+    full:    `請幫我規劃共 ${slides} 張投影片的詳細章節。針對「每張投影片」，皆須包含：① 投影片單頁標題、② ${pts} 個核心重點列點（提煉自知識庫的重要觀念或操作步驟）、③ 具體實際用法範例、④ 相關數據或引用（如知識庫有提及）。`,
+  };
+
+  const parts = [
+    `你是一位專業的簡報內容策劃師。請根據知識庫中的資料，${structDesc ? '以「' + structLabel + '」的邏輯順序，' : ''}整理出一份完整的簡報內容大綱，供後續製作投影片使用。`,
+    `【簡報主題】\n${topic}`,
+    `【簡報目的與類型】\n${purpose}`,
+    `【發表情境】\n場景：${scene}　受眾：${audience}　時長：${duration} 分鐘`,
+    role !== '不需要角色' ? `【講者角色與語氣】\n角色：${role}　語氣風格：${tone}` : `【語氣風格】\n${tone}`,
+    cta !== '不需要行動呼籲' ? `【核心行動呼籲（CTA）】\n結尾投影片需明確引導受眾：${cta}` : null,
+    `【大綱輸出格式】\n${fmtMap[d]}\n\n所有內容必須來自知識庫，不得自行創造或推測數據。`,
+  ].filter(Boolean);
+
+  box.className = 'output-full';
+  box.textContent = parts.join('\n\n');
+}
+
+function doOutlineCopy() {
+  const box = document.getElementById('outline-output');
+  if (box.classList.contains('empty')) return;
+  navigator.clipboard.writeText(box.textContent).then(() => {
+    const b = document.getElementById('outlineCopyBtn');
+    b.textContent = '已複製 ✓'; b.classList.add('ok');
+    setTimeout(() => { b.textContent = '複製'; b.classList.remove('ok'); }, 2000);
+  });
+}
+
+generateOutline();
+
 const INFO_STYLE_IMG = { flat:0, clay:1, semi:2, watercolor:3, iso:4, '2.5d':5 };
+
+const CHAR_DESC = {
+  '醫護人員': '穿著白色醫師袍的親切醫護人員',
+  '老師講師': '穿著正式服裝、手持教學指示棒的講師',
+  '卡通動物': '風格與畫面一致的可愛圓潤動物角色',
+  '機器人AI': '造型簡潔友善的科技感 AI 機器人助理',
+  '小精靈': '活潑靈動的卡通小精靈',
+};
+
+function buildCharPrompt(typeId) {
+  const typeBtn = document.querySelector('#' + typeId + ' .info-btn.active');
+  const type = typeBtn ? typeBtn.dataset.v : '';
+  if (!type) return '';
+  const desc = CHAR_DESC[type] || type;
+  return `加入一位${desc}作為導覽解說角色，請依照每頁投影片的內容主題，自然安排其站立位置（左側、右側或角落）與互動姿態（如指向重點文字、舉手說明、思考表情、歡迎手勢等），使角色動作與該頁內容具有呼應感；角色風格與整體視覺一致，比例適中不遮擋重要資訊，表情親切生動。`;
+}
+
+function selChar(groupId, btn) {
+  document.querySelectorAll('#' + groupId + ' .info-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const hint = document.getElementById(groupId.replace('-type', '-hint'));
+  if (hint) hint.style.display = btn.dataset.v ? 'block' : 'none';
+  if (groupId.startsWith('bg-')) generate(); else generateInfo();
+}
 
 function selInfo(groupId, btn) {
   document.querySelectorAll('#' + groupId + ' .info-btn').forEach(b => b.classList.remove('active'));
@@ -961,6 +1343,8 @@ function generateInfo() {
   if (p) parts.push('【角色 Persona】\n' + p);
   if (t) parts.push('【任務 Task】\n' + t);
   if (c) parts.push('【內容背景 Context】\n' + c);
+  const infoChar = buildCharPrompt('i-char-type');
+  if (infoChar) parts.push('【導覽角色】\n' + infoChar);
   parts.push('【資訊圖表規格 Format】\n' + fmt);
 
   box.className = 'output-full';
